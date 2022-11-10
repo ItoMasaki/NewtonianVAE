@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from models import NewtonianVAE
-from dataset import ExperienceReplay
+from datasets.memory import ExperienceReplay
 
 from dm_control import suite
 

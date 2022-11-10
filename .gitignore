@@ -135,4 +135,4 @@ runs
 weights/*
 
 # datasets
-datasets/*
+!datasets/memory.py

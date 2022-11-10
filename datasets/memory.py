@@ -38,3 +38,11 @@ class ExperienceReplay():
     self.full = False  # Tracks if memory has been filled/all slots are valid
     # Tracks how much experience has been used in total
     self.steps, self.episodes = 0, 0
+
+  def save(self, path):
+    np.savez(path, {"colors": self.colors, "actions": self.actions})
+
+  def load(self, path):
+    with np.load(path, allow_pickle=True) as data:
+      self.colors = data["colors"]
+      self.actions = data["actions"]
