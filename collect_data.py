@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from dm_control import suite
 import numpy as np
 import yaml
@@ -55,4 +56,5 @@ for episode in range(max_episode):
   save_memory.append(np.concatenate(observations), np.concatenate(actions), episode)
 
 
+print()
 save_memory.save(save_path, save_filename)
