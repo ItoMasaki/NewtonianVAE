@@ -9,7 +9,7 @@ from pixyz.losses import LogProb
 from pixyz.losses import IterativeLoss
 from pixyz.models import Model
 
-from distributions import Encoder, Decoder, Transition, Velocity
+from components.distributions import Encoder, Decoder, Transition, Velocity
 
 
 class NewtonianVAE(Model):
