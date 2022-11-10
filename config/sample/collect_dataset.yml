@@ -1,0 +1,13 @@
+env: reacher2d
+
+train:
+  max_episode: 10
+  max_sequence: 150
+  save_path: datasets/sample
+  save_filename: train.npz
+
+test:
+  max_episode: 1
+  max_sequence: 150
+  save_path: datasets/sample
+  save_filename: test.npz

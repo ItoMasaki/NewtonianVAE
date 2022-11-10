@@ -47,18 +47,8 @@ class ExperienceReplay():
       pass
 
     np.savez(f"{save_path}/{filename}", **{"colors": self.colors, "actions": self.actions})
-    print("############ SUCCESS TO SAVE ############")
-    print(f" Color : {self.colors.shape}")
-    print(f"Action : {self.actions.shape}")
-    print("#########################################")
 
   def load(self, path):
     with np.load(path, allow_pickle=True) as data:
       self.colors = data["colors"]
       self.actions = data["actions"]
-
-      print("[*] Success to load")
-      print("############ SUCCESS TO LOAD ############")
-      print(f" Color : {self.colors.shape}")
-      print(f"Action : {self.actions.shape}")
-      print("#########################################")

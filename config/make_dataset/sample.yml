@@ -1,5 +1,0 @@
-env: reacher2d
-max_episode: 10
-max_sequence: 150
-save_path: datasets/test
-save_filename: test.npz
