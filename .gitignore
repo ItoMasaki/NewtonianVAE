@@ -132,4 +132,7 @@ dmypy.json
 runs
 
 # model weights
-weights
+weights/*
+
+# datasets
+datasets/*
