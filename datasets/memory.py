@@ -1,3 +1,4 @@
+import os
 import numpy as np
 
 import torch
@@ -39,10 +40,22 @@ class ExperienceReplay():
     # Tracks how much experience has been used in total
     self.steps, self.episodes = 0, 0
 
-  def save(self, path):
-    np.savez(path, {"colors": self.colors, "actions": self.actions})
+  def save(self, save_path, filename):
+    try:
+      os.makedirs(save_path)
+    except FileExistsError:
+      pass
+
+    np.savez(f"{save_path}/{filename}", **{"colors": self.colors, "actions": self.actions})
+    print("[*] Success to save")
+    print(f"Color : {self.colors.shape}")
+    print(f"Action : {self.actions.shape}")
 
   def load(self, path):
     with np.load(path, allow_pickle=True) as data:
       self.colors = data["colors"]
       self.actions = data["actions"]
+
+      print("[*] Success to load")
+      print(f"Color : {self.colors.shape}")
+      print(f"Action : {self.actions.shape}")

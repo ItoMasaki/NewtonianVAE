@@ -135,4 +135,5 @@ runs
 !weights
 
 # datasets
-!datasets/memory.py
+!datasets/*.py
+datasets/

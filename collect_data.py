@@ -1,26 +1,42 @@
+from dm_control import suite
 import numpy as np
 import yaml
 
-from dm_control import suite
 
 from datasets.memory import ExperienceReplay
 
 
-batch_size = 20
-max_episode = 100
-max_sequence = 150
-epoch_max = 100000
+yaml_path = "config/make_dataset/sample.yml"
+
+with open(yaml_path) as file:
+    config = yaml.safe_load(file)
 
 
-# env = suite.load(domain_name="point_mass", task_name="hard")
-env = suite.load(domain_name="reacher", task_name="hard")
+if config["env"] == "reacher2d":
+  env = suite.load(domain_name="reacher", task_name="hard")
+elif config["env"] == "point_mass":
+  env = suite.load(domain_name="point_mass", task_name="hard")
+else:
+  raise NotImplementedError(f"{config['env']}")
 
 
-Train_Replay = ExperienceReplay(max_episode, max_sequence, 2, "cpu")
-Test_Replay = ExperienceReplay(1, max_sequence, 2, "cpu")
+max_episode = config["max_episode"]
+max_sequence = config["max_sequence"]
+save_path = config["save_path"]
+save_filename = config["save_filename"]
+
+print("############## CONFIG PARAMS ##############")
+print(f"  max_episode : {max_episode}")
+print(f" max_sequence : {max_sequence}")
+print(f"    save_path : {save_path}")
+print(f"save_filename : {save_filename}")
+print("###########################################")
 
 
-print("Collect train data")
+save_memory = ExperienceReplay(max_episode, max_sequence, 2, "cpu")
+
+
+print("Collect data")
 for episode in range(max_episode):
   print(f"Episode : {episode + 1}/{max_episode}", end="\r")
   time_step = env.reset()
@@ -36,23 +52,7 @@ for episode in range(max_episode):
     actions.append(action[np.newaxis, :])
     observations.append(video.transpose(2, 0, 1)[np.newaxis, :, :, :]/255.0)
   
-  Train_Replay.append(np.concatenate(observations), np.concatenate(actions), episode)
+  save_memory.append(np.concatenate(observations), np.concatenate(actions), episode)
 
 
-print("Collect test data")
-for episode in range(1):
-  print(f"Episode : {episode + 1}/{max_episode}", end="\r")
-  time_step = env.reset()
-
-  actions = []
-  observations = []
-
-  for _ in range(max_sequence):
-    action = np.array([0.5+(np.random.rand()-0.5), np.random.rand()*0.25])
-    time_step = env.step(action)
-    video = env.physics.render(64, 64, camera_id=0)
-
-    actions.append(action[np.newaxis, :])
-    observations.append(video.transpose(2, 0, 1)[np.newaxis, :, :, :]/255.0)
-  
-  Test_Replay.append(np.concatenate(observations), np.concatenate(actions), episode)
+save_memory.save(save_path, save_filename)
