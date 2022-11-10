@@ -127,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# tensorboard
+runs
+
+# model weights
+weights
