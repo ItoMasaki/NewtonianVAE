@@ -10,23 +10,25 @@ class Encoder(dist.Normal):
   """
     q(x_t | I_t) = N(x_t | I_t)
   """
-  def __init__(self, input_dim: int=3, output_dim: int=2):
+  def __init__(self, input_dim: int=3, output_dim: int=2, act_func_name: str="ReLU"):
     super().__init__(var=["x"], cond_var=["I"])
+
+    activation_func = getattr(nn, act_func_name)
 
     self.encoder = nn.Sequential(
         nn.Conv2d(in_channels=input_dim, out_channels=32, kernel_size=3, stride=2),
-        nn.ReLU(),
+        activation_func(),
         nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2),
-        nn.ReLU(),
+        activation_func(),
         nn.Conv2d(in_channels=64, out_channels=128, kernel_size=4, stride=2),
-        nn.ReLU(),
+        activation_func(),
         nn.Conv2d(in_channels=128, out_channels=256, kernel_size=4, stride=2),
-        nn.ReLU(),
+        activation_func(),
     )
 
     self.loc = nn.Sequential(
         nn.Linear(1024, output_dim),
-        nn.Tanh()
+        nn.Sigmoid()
     )
 
     self.scale = nn.Sequential(
@@ -39,7 +41,7 @@ class Encoder(dist.Normal):
     B, C, W, H = feature.shape
     feature = feature.reshape((B, C*W*H))
     
-    loc = self.loc(feature)
+    loc = self.loc(feature)*10.
     scale = self.scale(feature)
 
     return {"loc": loc, "scale": scale}
@@ -49,32 +51,33 @@ class Decoder(dist.Normal):
   """
     p(I_t | x_t) = N(I_t | x_t)
   """
-  def __init__(self, input_dim: int=2, output_dim: int=3):
+  def __init__(self, input_dim: int=2, output_dim: int=3, act_func_name: str="ReLU"):
     super().__init__(var=["I"], cond_var=["x"])
+
+    activation_func = getattr(nn, act_func_name)
 
     self.up_size_feature = nn.Sequential(
         nn.Linear(input_dim, 1024),
-        nn.ReLU(),
+        activation_func(),
     )
 
     self.loc = nn.Sequential(
         nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=4, stride=1),
-        nn.ReLU(),
+        activation_func(),
         nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=5, stride=2),
-        nn.ReLU(),
+        activation_func(),
         nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=6, stride=2),
-        nn.ReLU(),
+        activation_func(),
         nn.ConvTranspose2d(in_channels=32, out_channels=output_dim, kernel_size=6, stride=2),
         nn.Sigmoid(),
     )
-
 
   def forward(self, x: torch.Tensor) -> dict:
     feature = self.up_size_feature(x)
     B, C = feature.shape
     feature = feature.view((B, 256, 2, 2))
 
-    loc = self.loc(feature)   
+    loc = self.loc(feature)
 
     return {"loc": loc, "scale": .01}
 
@@ -105,7 +108,9 @@ class Velocity(dist.Deterministic):
 
     self.output_coefficient = nn.Sequential(
       nn.Linear(2*3, 6),
-      nn.Sigmoid()
+      nn.ReLU(),
+      nn.Linear(2*3, 6),
+      nn.Tanh()
     )
  
     self.delta_time = delta_time

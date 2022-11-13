@@ -131,9 +131,6 @@ dmypy.json
 # tensorboard
 runs
 
-# model weights
-!weights
-
 # datasets
 !datasets/*.py
 datasets/

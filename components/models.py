@@ -1,3 +1,5 @@
+import os
+
 import torch
 from torch import nn
 from torch import optim
@@ -101,3 +103,30 @@ class NewtonianVAE(Model):
       I_next = self.decoder.sample_mean({"x": x_next})
 
     return I_t, x_t, v_t, I_next, x_next
+
+  def save(self, path, filename):
+    try:
+      os.makedirs(path)
+    except FileExistsError:
+      pass
+
+    torch.save({
+      'distributions': self.distributions.state_dict(),
+    }, f"{path}/{filename}")
+
+  def init_params(self):
+
+    for m in self.distributions.modules():
+
+      if isinstance(m, nn.Conv2d):
+        nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+        if m.bias is not None:
+              nn.init.constant_(m.bias, 0)
+
+      elif isinstance(m, nn.BatchNorm2d):
+        nn.init.constant_(m.weight, 1)
+        nn.init.constant_(m.bias, 0)
+
+      elif isinstance(m, nn.Linear):
+        nn.init.normal_(m.weight, 0, 0.01)
+        nn.init.constant_(m.bias, 0)
