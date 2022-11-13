@@ -14,7 +14,7 @@ from components.memory import ExperienceReplay
 batch_size = 50
 max_episode = 1000
 max_sequence = 100
-epoch_max = 1000
+epoch_max = 300
 train_path = "datasets/sample/train.npz"
 test_path = "datasets/sample/test.npz"
 timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -39,9 +39,7 @@ writer = SummaryWriter(comment="NewtonianVAE")
 
 
 model = NewtonianVAE()
-print(model.distributions.parameters())
 model.init_params()
-print(model.distributions.parameters())
 
 for epoch in range(epoch_max):
 
@@ -56,11 +54,9 @@ for epoch in range(epoch_max):
     print(f"Epoch : {epoch}  test_loss : {test_loss}", end="\033[1A\033[1000D")
     writer.add_scalar('test_loss', test_loss, epoch)
 
-  if epoch%100 == 0 and epoch != 0:
-    timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+  if epoch%10 == 0 and epoch != 0:
     model.save(f"{save_weight_path}", f"{epoch}.weight") 
 
-  if epoch%100 == 0 and epoch != 0:
     print("\n")
 
     v_t = torch.zeros((1, 2)).to(device)
@@ -68,9 +64,9 @@ for epoch in range(epoch_max):
 
     all_positions = []
 
-    for step in range(1, max_sequence):
+    for step in range(0, max_sequence-1):
 
-      I_t, x_t, v_t, I_next, x_next = model.infer(I[step], u[step-1], x_t, v_t)
+      I_t, x_t, v_t, I_next, x_next = model.infer(I[step+1], u[step], x_t, v_t)
 
       all_positions.append(x_t.to("cpu").detach().numpy()[0].tolist())
 

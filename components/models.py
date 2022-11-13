@@ -19,7 +19,7 @@ class NewtonianVAE(Model):
     #-------------------------#
     # Define models           #
     #-------------------------#
-    self.encoder = Encoder().to(device)
+    self.encoder = Encoder(output_func_name="Tanh").to(device)
     self.decoder = Decoder().to(device)
     self.transition = Transition(delta_time).to(device)
     self.velocity = Velocity(delta_time).to(device)
@@ -53,9 +53,9 @@ class NewtonianVAE(Model):
 
     total_loss = 0.
 
-    for step in range(1, T):
-      v = self.velocity(v_prev=v, x_prev=x, u=u[step-1])["v"]
-      step_loss, variables = self.step_loss({"I": I[step], "x_prev": x, "v": v})
+    for step in range(0, T-1):
+      v = self.velocity(v_prev=v, x_prev=x, u=u[step])["v"]
+      step_loss, variables = self.step_loss({"I": I[step+1], "x_prev": x, "v": v})
 
       x = variables["x"]
 

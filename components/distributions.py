@@ -10,10 +10,11 @@ class Encoder(dist.Normal):
   """
     q(x_t | I_t) = N(x_t | I_t)
   """
-  def __init__(self, input_dim: int=3, output_dim: int=2, act_func_name: str="ReLU"):
+  def __init__(self, input_dim: int=3, output_dim: int=2, act_func_name: str="ReLU", output_func_name: str="ReLU"):
     super().__init__(var=["x"], cond_var=["I"])
 
     activation_func = getattr(nn, act_func_name)
+    output_func = getattr(nn, output_func_name)
 
     self.encoder = nn.Sequential(
         nn.Conv2d(in_channels=input_dim, out_channels=32, kernel_size=3, stride=2),
@@ -28,7 +29,7 @@ class Encoder(dist.Normal):
 
     self.loc = nn.Sequential(
         nn.Linear(1024, output_dim),
-        nn.Sigmoid()
+        output_func()
     )
 
     self.scale = nn.Sequential(
@@ -41,7 +42,7 @@ class Encoder(dist.Normal):
     B, C, W, H = feature.shape
     feature = feature.reshape((B, C*W*H))
     
-    loc = self.loc(feature)*10.
+    loc = self.loc(feature)
     scale = self.scale(feature)
 
     return {"loc": loc, "scale": scale}
@@ -103,14 +104,16 @@ class Velocity(dist.Deterministic):
     v_t = v_prev + ∆t·(A·x_prev + B·v_prev + C·u_prev)
     with  [A, log(−B), log C] = diag(f(x_prev, v_prev, u_prev))
   """
-  def __init__(self, delta_time: float=.1):
+  def __init__(self, delta_time: float=.1, output_func_name: str="ReLU"):
     super().__init__(var=["v"], cond_var=["x_prev", "v_prev", "u"], name="f")
+
+    output_func = getattr(nn, output_func_name)
 
     self.output_coefficient = nn.Sequential(
       nn.Linear(2*3, 6),
       nn.ReLU(),
       nn.Linear(2*3, 6),
-      nn.Tanh()
+      output_func()
     )
  
     self.delta_time = delta_time
