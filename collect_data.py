@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-from dm_control import suite
 import numpy as np
 import yaml
-
+from matplotlib import pyplot as plt
 
 from components.memory import ExperienceReplay
+from environments import load
 
 
 yaml_path = "config/sample/collect_dataset.yml"
@@ -12,13 +12,30 @@ yaml_path = "config/sample/collect_dataset.yml"
 with open(yaml_path) as file:
     config = yaml.safe_load(file)
 
-
-if config["env"] == "reacher2d":
-  env = suite.load(domain_name="reacher", task_name="hard")
+if config["env"] == "reacher_nvae":
+  env = load(domain_name="reacher_nvae", task_name="hard")
+elif config["env"] == "reacher":
+  env = load(domain_name="reacher", task_name="hard")
 elif config["env"] == "point_mass":
-  env = suite.load(domain_name="point_mass", task_name="hard")
+  env = load(domain_name="point_mass", task_name="hard")
 else:
   raise NotImplementedError(f"{config['env']}")
+
+
+#############################
+print("[*] Check an enviroment")
+time_step = env.reset()
+
+for _ in range(100):
+  action = np.array([0.5+(np.random.rand()-0.5), -np.pi+0.3+np.random.rand()*0.5])
+  time_step = env.step(action)
+  video = env.physics.render(64, 64, camera_id=0)
+
+  plt.cla()
+  plt.imshow(video)
+  plt.pause(0.01)
+
+#############################
 
 
 for mode in ["train", "test"]:
@@ -47,7 +64,7 @@ for mode in ["train", "test"]:
     observations = []
   
     for _ in range(max_sequence):
-      action = np.array([0.5+(np.random.rand()-0.5), np.random.rand()*0.25])
+      action = np.array([0.5+(np.random.rand()-0.5), -np.pi+0.3+np.random.rand()*0.5])
       time_step = env.step(action)
       video = env.physics.render(64, 64, camera_id=0)
   

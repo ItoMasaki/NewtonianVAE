@@ -4,6 +4,7 @@ import torch
 from torch import nn
 from torch import optim
 from torch.nn import functional as F
+from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 
 from pixyz.losses import KullbackLeibler as KL
 from pixyz.losses import Expectation as E
@@ -46,18 +47,22 @@ class NewtonianVAE(Model):
     I = input_var_dict["I"]
     u = input_var_dict["u"]
 
-    T, B, C = u.shape
-
-    v = torch.zeros((B, 2)).to(self.device)
-    x = self.encoder.sample({"I": I[0]}, reparam=True)["x"]
-
     total_loss = 0.
 
-    for step in range(0, T-1):
-      v = self.velocity(v_prev=v, x_prev=x, u=u[step])["v"]
-      step_loss, variables = self.step_loss({"I": I[step+1], "x_prev": x, "v": v})
+    T, B, C = u.shape
 
-      x = variables["x"]
+    x_tn1 = self.encoder.sample({"I": I[0]}, reparam=True)["x"]
+
+    for step in range(1, T):
+      x_t = self.encoder.sample({"I": I[step]}, reparam=True)["x"]
+
+      v_t = (x_t - x_tn1)/self.delta_time
+
+      v_next = self.velocity(x_prev=x_t, v_prev=v_t, u=u[step-1])["v"]
+
+      step_loss, variables = self.step_loss({"I": I[step], "x_prev": x_t, "v": v_next})
+
+      x_tn1 = x_t
 
       total_loss += step_loss
 
@@ -90,16 +95,16 @@ class NewtonianVAE(Model):
 
     return loss.item()
 
-  def infer(self, I: torch.Tensor, u: torch.Tensor, x_prev: torch.Tensor, v_prev: torch.Tensor):
+  def infer(self, I: torch.Tensor, u: torch.Tensor, x_tn1: torch.Tensor):
     self.distributions.eval()
 
     with torch.no_grad():
       x_t = self.encoder.sample_mean({"I": I})
+      v_t = (x_t - x_tn1)/self.delta_time
       I_t = self.decoder.sample_mean({"x": x_t})
 
-      v_t = (x_t - x_prev)/self.delta_time
-
-      x_next = self.transition.sample_mean({"x_prev":x_t, "v": v_t})
+      v_next = self.velocity(x_prev=x_t, v_prev=v_t, u=u)["v"]
+      x_next = self.transition.sample_mean({"x_prev":x_t, "v": v_next})
       I_next = self.decoder.sample_mean({"x": x_next})
 
     return I_t, x_t, v_t, I_next, x_next

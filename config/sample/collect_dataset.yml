@@ -1,4 +1,4 @@
-env: reacher2d
+env: reacher_nvae
 
 train:
   max_episode: 1000
