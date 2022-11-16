@@ -35,6 +35,7 @@ writer = SummaryWriter(comment="NewtonianVAE")
 
 
 model = NewtonianVAE(device=cfg["device"])
+model.init_params()
 if cfg["init_params"]:
   model.init_params()
 
@@ -54,17 +55,17 @@ with tqdm(range(cfg["epoch_max"])) as pbar:
 
       pbar.set_postfix({"train_loss": train_loss, "test_loss": test_loss})
 
-    if epoch%cfg["check_epoch"] == 0: # and epoch != 0:
+    if epoch%cfg["check_epoch"] == 0 and epoch != 0:
       model.save(f"{save_weight_path}", f"{epoch}.weight") 
 
       frames: list = []
       all_positions = []
 
-      x_t = model.encoder.sample({"I": I[0]})["x"]
+      x_t = model.encoder.sample({"I_t": I[0]})["x_t"]
 
-      for step in range(0, cfg["max_sequence"]-1):
+      for step in range(1, cfg["max_sequence"]-1):
 
-        I_t, x_t, v_t, I_next, x_next = model.infer(I[step+1], u[step], x_t)
+        I_t, x_t, I_next, x_next = model.infer(I[step], u[step-1], x_t)
 
         all_positions.append(x_t.to("cpu").detach().numpy()[0].tolist())
 

@@ -28,15 +28,15 @@ class NewtonianVAE(Model):
     #-------------------------#
     # Define loss functions   #
     #-------------------------#
-    self.recon_loss = E(self.transition, LogProb(self.decoder))
-    self.kl_loss = KL(self.transition, self.encoder)
-    self.step_loss = (self.kl_loss - self.recon_loss).mean()
+    recon_loss = E(self.transition, LogProb(self.decoder))
+    kl_loss = KL(self.transition, self.encoder)
+    self.step_loss = (kl_loss - recon_loss).mean()
 
     self.distributions = nn.ModuleList([self.encoder, self.decoder, self.transition, self.velocity])
 
     # set params and optim
     params = self.distributions.parameters()
-    self.optimizer = optimizer(params, **optimizer_params)
+    self.optimizer = optimizer(params, lr=3e-4, **optimizer_params)
 
     self.clip_norm = clip_grad_norm
     self.clip_value = clip_grad_value
@@ -51,18 +51,18 @@ class NewtonianVAE(Model):
 
     T, B, C = u.shape
 
-    x_tn1 = self.encoder.sample({"I": I[0]}, reparam=True)["x"]
+    x_p_t = self.encoder.sample({"I_t": I[0]}, reparam=True)["x_t"]
 
     for step in range(1, T):
-      x_t = self.encoder.sample({"I": I[step]}, reparam=True)["x"]
+      x_q_tn1 = self.encoder.sample({"I_t": I[step-1]}, reparam=True)["x_t"]
+      x_q_t = self.encoder.sample({"I_t": I[step]}, reparam=True)["x_t"]
 
-      v_t = (x_t - x_tn1)/self.delta_time
+      v_t = (x_q_t - x_q_tn1)/self.delta_time
+      v_tp1 = self.velocity(x_tn1=x_q_tn1, v_tn1=v_t, u_tn1=u[step-1])["v_t"]
 
-      v_next = self.velocity(x_prev=x_t, v_prev=v_t, u=u[step-1])["v"]
+      step_loss, variables = self.step_loss({"I_t": I[step], "x_tn1": x_p_t, "v_t": v_tp1})
 
-      step_loss, variables = self.step_loss({"I": I[step], "x_prev": x_t, "v": v_next})
-
-      x_tn1 = x_t
+      x_p_t = variables["x_t"]
 
       total_loss += step_loss
 
@@ -95,19 +95,20 @@ class NewtonianVAE(Model):
 
     return loss.item()
 
-  def infer(self, I: torch.Tensor, u: torch.Tensor, x_tn1: torch.Tensor):
+  def infer(self, I_t: torch.Tensor, u_tn1: torch.Tensor, x_tn1: torch.Tensor):
     self.distributions.eval()
 
     with torch.no_grad():
-      x_t = self.encoder.sample_mean({"I": I})
+      x_t = self.encoder.sample_mean({"I_t": I_t})
+      I_t = self.decoder.sample_mean({"x_t": x_t})
+
       v_t = (x_t - x_tn1)/self.delta_time
-      I_t = self.decoder.sample_mean({"x": x_t})
+      v_tp1 = self.velocity(x_tn1=x_tn1, v_tn1=v_t, u_tn1=u_tn1)["v_t"]
 
-      v_next = self.velocity(x_prev=x_t, v_prev=v_t, u=u)["v"]
-      x_next = self.transition.sample_mean({"x_prev":x_t, "v": v_next})
-      I_next = self.decoder.sample_mean({"x": x_next})
+      x_tp1 = self.transition.sample_mean({"x_tn1":x_t, "v_t": v_tp1})
+      I_tp1 = self.decoder.sample_mean({"x_t": x_tp1})
 
-    return I_t, x_t, v_t, I_next, x_next
+    return I_t, x_t, I_tp1, x_tp1
 
   def save(self, path, filename):
     try:

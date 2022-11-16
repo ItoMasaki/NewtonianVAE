@@ -11,13 +11,12 @@ class Encoder(dist.Normal):
     q(x_t | I_t) = N(x_t | I_t)
   """
   def __init__(self, input_dim: int=3, output_dim: int=2, act_func_name: str="ReLU", output_func_name: str="ReLU"):
-    super().__init__(var=["x"], cond_var=["I"])
+    super().__init__(var=["x_t"], cond_var=["I_t"])
 
     activation_func = getattr(nn, act_func_name)
-    output_func = getattr(nn, output_func_name)
 
     self.encoder = nn.Sequential(
-        nn.Conv2d(in_channels=input_dim, out_channels=32, kernel_size=3, stride=2),
+        nn.Conv2d(in_channels=input_dim, out_channels=32, kernel_size=4, stride=2),
         activation_func(),
         nn.Conv2d(in_channels=32, out_channels=64, kernel_size=4, stride=2),
         activation_func(),
@@ -29,7 +28,6 @@ class Encoder(dist.Normal):
 
     self.loc = nn.Sequential(
         nn.Linear(1024, output_dim),
-        output_func()
     )
 
     self.scale = nn.Sequential(
@@ -37,8 +35,8 @@ class Encoder(dist.Normal):
         nn.Softplus()
     )
 
-  def forward(self, I: torch.Tensor) -> dict:
-    feature = self.encoder(I)
+  def forward(self, I_t: torch.Tensor) -> dict:
+    feature = self.encoder(I_t)
     B, C, W, H = feature.shape
     feature = feature.reshape((B, C*W*H))
     
@@ -53,7 +51,7 @@ class Decoder(dist.Normal):
     p(I_t | x_t) = N(I_t | x_t)
   """
   def __init__(self, input_dim: int=2, output_dim: int=3, act_func_name: str="ReLU"):
-    super().__init__(var=["I"], cond_var=["x"])
+    super().__init__(var=["I_t"], cond_var=["x_t"])
 
     activation_func = getattr(nn, act_func_name)
 
@@ -63,7 +61,7 @@ class Decoder(dist.Normal):
     )
 
     self.loc = nn.Sequential(
-        nn.ConvTranspose2d(in_channels=256, out_channels=128, kernel_size=4, stride=1),
+        nn.ConvTranspose2d(in_channels=1024, out_channels=128, kernel_size=5, stride=2),
         activation_func(),
         nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=5, stride=2),
         activation_func(),
@@ -73,10 +71,10 @@ class Decoder(dist.Normal):
         nn.Sigmoid(),
     )
 
-  def forward(self, x: torch.Tensor) -> dict:
-    feature = self.up_size_feature(x)
+  def forward(self, x_t: torch.Tensor) -> dict:
+    feature = self.up_size_feature(x_t)
     B, C = feature.shape
-    feature = feature.view((B, 256, 2, 2))
+    feature = feature.view((B, 1024, 1, 1))
 
     loc = self.loc(feature)
 
@@ -88,13 +86,13 @@ class Transition(dist.Normal):
     p(x_t | x_prev, u_prev; v_t) = N(x_t | x_prev + ∆t·v_t, σ^2)
   """
   def __init__(self, delta_time: float=.1):
-    super().__init__(var=["x"], cond_var=["x_prev", "v"])
+    super().__init__(var=["x_t"], cond_var=["x_tn1", "v_t"])
  
     self.delta_time = delta_time
 
-  def forward(self, x_prev: torch.Tensor, v: torch.Tensor) -> dict:
+  def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor) -> dict:
 
-    x_t = x_prev + self.delta_time * v
+    x_t = x_tn1 + self.delta_time * v_t
 
     return {"loc": x_t, "scale": .01}
 
@@ -105,7 +103,7 @@ class Velocity(dist.Deterministic):
     with  [A, log(−B), log C] = diag(f(x_prev, v_prev, u_prev))
   """
   def __init__(self, delta_time: float=.1, output_func_name: str="ReLU"):
-    super().__init__(var=["v"], cond_var=["x_prev", "v_prev", "u"], name="f")
+    super().__init__(var=["v_t"], cond_var=["x_tn1", "v_tn1", "u_tn1"], name="f")
 
     output_func = getattr(nn, output_func_name)
 
@@ -118,14 +116,14 @@ class Velocity(dist.Deterministic):
  
     self.delta_time = delta_time
  
-  def forward(self, x_prev: torch.Tensor, v_prev: torch.Tensor, u: torch.Tensor) -> dict:
+  def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
  
-    _input = torch.cat([x_prev, v_prev, u], dim=1)
+    _input = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)
     coefficient = torch.diag_embed(self.output_coefficient(_input))
 
     A, B, C = coefficient[:, 0:2, 0:2], -torch.exp(coefficient[:, 2:4, 2:4]), torch.exp(coefficient[:, 4:6, 4:6])
 
-    # Dynamics inspired by Newton's motion equation   
-    v_t = v_prev + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_prev) + torch.einsum("ijk,ik->ik", B, v_prev) + torch.einsum("ijk,ik->ik", C, u))
+    # Dynamics inspired by Newton's motion equation
+    v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum("ijk,ik->ik", B, v_tn1) + torch.einsum("ijk,ik->ik", C, u_tn1))
     
-    return {"v": v_t}
+    return {"v_t": v_t}
