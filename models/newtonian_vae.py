@@ -12,7 +12,7 @@ from pixyz.losses import LogProb
 from pixyz.losses import IterativeLoss
 from pixyz.models import Model
 
-from components.distributions import Encoder, Decoder, Transition, Velocity
+from models.distributions import Encoder, Decoder, Transition, Velocity
 
 
 class NewtonianVAE(Model):
@@ -20,7 +20,7 @@ class NewtonianVAE(Model):
     #-------------------------#
     # Define models           #
     #-------------------------#
-    self.encoder = Encoder(output_func_name="Tanh").to(device)
+    self.encoder = Encoder().to(device)
     self.decoder = Decoder().to(device)
     self.transition = Transition(delta_time).to(device)
     self.velocity = Velocity(delta_time).to(device)

@@ -13,7 +13,7 @@ with open(yaml_path) as file:
     config = yaml.safe_load(file)
 
 if config["env"] == "reacher_nvae":
-  env = load(domain_name="reacher_nvae", task_name="hard")
+  env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": False})
 elif config["env"] == "reacher":
   env = load(domain_name="reacher", task_name="hard")
 elif config["env"] == "point_mass":
@@ -27,7 +27,7 @@ print("[*] Check an enviroment")
 time_step = env.reset()
 
 for _ in range(100):
-  action = np.array([0.5+(np.random.rand()-0.5), -np.pi+0.3+np.random.rand()*0.5])
+  action = np.array([0.5+(np.random.rand()-0.5), 0.5+(np.random.rand()-0.5)])
   time_step = env.step(action)
   video = env.physics.render(64, 64, camera_id=0)
 
@@ -39,6 +39,21 @@ for _ in range(100):
 
 
 for mode in ["train", "test"]:
+  if config["env"] == "reacher_nvae":
+    if mode == "test":
+      env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": True})
+    else:
+      env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": False})
+
+  elif config["env"] == "reacher":
+    env = load(domain_name="reacher", task_name="hard")
+
+  elif config["env"] == "point_mass":
+    env = load(domain_name="point_mass", task_name="hard")
+
+  else:
+    raise NotImplementedError(f"{config['env']}")
+
   max_episode = config[mode]["max_episode"]
   max_sequence = config[mode]["max_sequence"]
   save_path = config[mode]["save_path"]
@@ -64,7 +79,7 @@ for mode in ["train", "test"]:
     observations = []
   
     for _ in range(max_sequence):
-      action = np.array([0.5+(np.random.rand()-0.5), -np.pi+0.3+np.random.rand()*0.5])
+      action = np.array([0.5+(np.random.rand()-0.5), 0.5+(np.random.rand()-0.5)])
       time_step = env.step(action)
       video = env.physics.render(64, 64, camera_id=0)
   

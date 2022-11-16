@@ -10,8 +10,8 @@ from matplotlib import pyplot as plt
 from matplotlib.animation import ArtistAnimation
 from tensorboardX import SummaryWriter
 
-from components.models import NewtonianVAE
-from components.memory import ExperienceReplay
+from models.newtonian_vae import NewtonianVAE
+from models.memory import ExperienceReplay
 
 
 cfg_path = "config/sample/train.yml"

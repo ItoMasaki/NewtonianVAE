@@ -38,20 +38,20 @@ def get_model_and_assets():
 
 
 @SUITE.add('benchmarking', 'easy')
-def easy(time_limit=_DEFAULT_TIME_LIMIT, random=None, environment_kwargs=None):
+def easy(time_limit=_DEFAULT_TIME_LIMIT, random=None, whole_range=True, environment_kwargs=None):
   """Returns reacher with sparse reward with 5e-2 tol and randomized target."""
   physics = Physics.from_xml_string(*get_model_and_assets())
-  task = Reacher(target_size=_BIG_TARGET, random=random)
+  task = Reacher(target_size=_BIG_TARGET, whole_range=whole_range, random=random)
   environment_kwargs = environment_kwargs or {}
   return control.Environment(
       physics, task, time_limit=time_limit, **environment_kwargs)
 
 
 @SUITE.add('benchmarking')
-def hard(time_limit=_DEFAULT_TIME_LIMIT, random=None, environment_kwargs=None):
+def hard(time_limit=_DEFAULT_TIME_LIMIT, random=None, whole_range=True, environment_kwargs=None):
   """Returns reacher with sparse reward with 1e-2 tol and randomized target."""
   physics = Physics.from_xml_string(*get_model_and_assets())
-  task = Reacher(target_size=_SMALL_TARGET, random=random)
+  task = Reacher(target_size=_SMALL_TARGET, whole_range=whole_range, random=random)
   environment_kwargs = environment_kwargs or {}
   return control.Environment(
       physics, task, time_limit=time_limit, **environment_kwargs)
@@ -73,7 +73,7 @@ class Physics(mujoco.Physics):
 class Reacher(base.Task):
   """A reacher `Task` to reach the target."""
 
-  def __init__(self, target_size, random=None):
+  def __init__(self, target_size, whole_range, random=None):
     """Initialize an instance of `Reacher`.
 
     Args:
@@ -84,6 +84,7 @@ class Reacher(base.Task):
         automatically (default).
     """
     self._target_size = target_size
+    self._whole_range = whole_range
     super().__init__(random=random)
 
   def initialize_episode(self, physics):
@@ -94,17 +95,15 @@ class Reacher(base.Task):
       qpos["shoulder"] = np.random.uniform(-2.79253, 2.79253)    
       qpos["wrist"] = np.random.uniform(0, 2.79253)    
     else:    
-      qpos["shoulder"] = 0.5+(np.random.rand()-0.5)    
+      qpos["shoulder"] = 0.7269511598006756 # 0.5+(np.random.rand()-0.5)
       qpos["wrist"] = -np.pi+0.3+np.random.rand()*0.5
 
     physics.named.model.geom_size['target_1', 0] = self._target_size
     # randomizers.randomize_limited_and_rotational_joints(physics, self.random)
 
     # Randomize target position
-    angle = self.random.uniform(0, 2 * np.pi)
-    radius = self.random.uniform(.05, .20)
-    physics.named.model.geom_pos['target_1', 'x'] = 0.2 #radius * np.sin(angle)
-    physics.named.model.geom_pos['target_1', 'y'] = 0.2 #radius * np.cos(angle)
+    physics.named.model.geom_pos['target_1', 'x'] = 0.2
+    physics.named.model.geom_pos['target_1', 'y'] = 0.2
 
     super().initialize_episode(physics)
 
