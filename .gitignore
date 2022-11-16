@@ -137,3 +137,6 @@ runs
 # datasets
 !datasets/*.py
 datasets/
+
+# video
+*.mp4
