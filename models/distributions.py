@@ -40,7 +40,7 @@ class Encoder(dist.Normal):
     B, C, W, H = feature.shape
     feature = feature.reshape((B, C*W*H))
     
-    loc = self.loc(feature)*torch.pi
+    loc = self.loc(feature)
     scale = self.scale(feature)
 
     return {"loc": loc, "scale": scale}

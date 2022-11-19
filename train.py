@@ -38,7 +38,7 @@ if cfg["init_params"]:
 best_loss: float = 1e32
 
 
-with tqdm(range(cfg["epoch_max"])) as pbar:
+with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
 
   for epoch in pbar:
     pbar.set_description(f"[Epoch {epoch}]")
@@ -65,7 +65,7 @@ with tqdm(range(cfg["epoch_max"])) as pbar:
 
       for step in range(0, cfg["max_sequence"]-1):
 
-        I_t, I_tp1, x_q_t, x_p_tp1 = model.infer(I[step+1], I[step], u[step+1])
+        I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(I[step+1], I[step], u[step+1])
 
         all_positions.append(x_q_t.to("cpu").detach().numpy()[0].tolist())
 
