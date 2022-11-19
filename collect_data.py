@@ -3,11 +3,11 @@ import numpy as np
 import yaml
 from matplotlib import pyplot as plt
 
-from components.memory import ExperienceReplay
+from models.memory import ExperienceReplay
 from environments import load
 
 
-yaml_path = "config/sample/collect_dataset.yml"
+yaml_path = "config/sample/collect_point_mass_dataset.yml"
 
 with open(yaml_path) as file:
     config = yaml.safe_load(file)
@@ -27,7 +27,7 @@ print("[*] Check an enviroment")
 time_step = env.reset()
 
 for _ in range(100):
-  action = np.array([0.5+(np.random.rand()-0.5), 0.5+(np.random.rand()-0.5)])
+  action = np.array([0.5+(np.random.rand()-0.5), 0.5+(np.random.rand()-0.5)/2])
   time_step = env.step(action)
   video = env.physics.render(64, 64, camera_id=0)
 
@@ -41,9 +41,9 @@ for _ in range(100):
 for mode in ["train", "test"]:
   if config["env"] == "reacher_nvae":
     if mode == "test":
-      env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": True})
-    else:
       env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": False})
+    else:
+      env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": True})
 
   elif config["env"] == "reacher":
     env = load(domain_name="reacher", task_name="hard")
@@ -77,14 +77,23 @@ for mode in ["train", "test"]:
   
     actions = []
     observations = []
-  
+
+    direction = np.random.uniform(-1, 1, 2)
+
     for _ in range(max_sequence):
-      action = np.array([0.5+(np.random.rand()-0.5), 0.5+(np.random.rand()-0.5)])
+      if mode == "train":
+        action = np.random.uniform(-1, 1, 2)
+      else:
+        action = np.array([np.random.normal(direction[0], 0.1), np.random.normal(direction[1]/2., 0.1)])
       time_step = env.step(action)
       video = env.physics.render(64, 64, camera_id=0)
   
       actions.append(action[np.newaxis, :])
       observations.append(video.transpose(2, 0, 1)[np.newaxis, :, :, :]/255.0)
+
+      # plt.cla()
+      # plt.imshow(video)
+      # plt.pause(0.0001)
     
     save_memory.append(np.concatenate(observations), np.concatenate(actions), episode)
   

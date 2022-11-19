@@ -2,8 +2,8 @@ batch_size: 50
 max_episode: 1000
 max_sequence: 100
 epoch_max: 300 
-check_epoch: 10
+check_epoch: 20
 init_params: false
-device: cuda
+device: cuda:1
 train_path: "datasets/sample/train.npz"
 test_path: "datasets/sample/test.npz"

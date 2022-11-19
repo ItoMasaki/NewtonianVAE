@@ -85,6 +85,7 @@ class Reacher(base.Task):
     """
     self._target_size = target_size
     self._whole_range = whole_range
+    print(self._whole_range)
     super().__init__(random=random)
 
   def initialize_episode(self, physics):
@@ -92,18 +93,10 @@ class Reacher(base.Task):
     qpos = physics.named.data.qpos    
     
     if self._whole_range:    
-      qpos["shoulder"] = np.random.uniform(-2.79253, 2.79253)    
-      qpos["wrist"] = np.random.uniform(0, 2.79253)    
+      randomizers.randomize_limited_and_rotational_joints(physics, self.random)
     else:    
-      qpos["shoulder"] = 0.7269511598006756 # 0.5+(np.random.rand()-0.5)
+      qpos["shoulder"] = 0.5+(np.random.rand()-0.5)
       qpos["wrist"] = -np.pi+0.3+np.random.rand()*0.5
-
-    physics.named.model.geom_size['target_1', 0] = self._target_size
-    # randomizers.randomize_limited_and_rotational_joints(physics, self.random)
-
-    # Randomize target position
-    physics.named.model.geom_pos['target_1', 'x'] = 0.2
-    physics.named.model.geom_pos['target_1', 'y'] = 0.2
 
     super().initialize_episode(physics)
 

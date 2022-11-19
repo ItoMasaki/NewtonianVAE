@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 
 import yaml
-import torch
 import numpy as np
 import datetime
 from tqdm import tqdm
-from dm_control import suite
-from matplotlib import pyplot as plt
-from matplotlib.animation import ArtistAnimation
 from tensorboardX import SummaryWriter
 
-from models.newtonian_vae import NewtonianVAE
+from models import NewtonianVAE
 from models.memory import ExperienceReplay
+from utils import visualize
 
 
 cfg_path = "config/sample/train.yml"
@@ -19,10 +16,9 @@ with open(cfg_path) as file:
   cfg = yaml.safe_load(file)
 
 timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-save_weight_path = f"weights/{timestamp}"
-
-
-fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+save_root_path = f"results/{timestamp}"
+save_weight_path = f"{save_root_path}/weights"
+save_video_path = f"{save_root_path}/videos"
 
 
 Train_Replay = ExperienceReplay(cfg["max_episode"], cfg["max_sequence"], 2, cfg["device"])
@@ -30,14 +26,17 @@ Test_Replay = ExperienceReplay(1, cfg["max_sequence"], 2, cfg["device"])
 Train_Replay.load(cfg["train_path"])
 Test_Replay.load(cfg["test_path"])
 
+visualizer = visualize.Visualization()
 
 writer = SummaryWriter(comment="NewtonianVAE")
 
-
 model = NewtonianVAE(device=cfg["device"])
-model.init_params()
+
 if cfg["init_params"]:
   model.init_params()
+
+best_loss: float = 1e32
+
 
 with tqdm(range(cfg["epoch_max"])) as pbar:
 
@@ -53,35 +52,28 @@ with tqdm(range(cfg["epoch_max"])) as pbar:
       test_loss = model.test({"I": I, "u": u})
       writer.add_scalar('test_loss', test_loss, epoch)
 
-      pbar.set_postfix({"train_loss": train_loss, "test_loss": test_loss})
+      pbar.set_postfix({"train": train_loss, "test": test_loss})
 
-    if epoch%cfg["check_epoch"] == 0 and epoch != 0:
+    if epoch%cfg["check_epoch"] == 0:
       model.save(f"{save_weight_path}", f"{epoch}.weight") 
 
-      frames: list = []
-      all_positions = []
+      if train_loss < best_loss:
+        model.save(f"{save_weight_path}", f"best.weight")
+        best_loss = train_loss
 
-      x_t = model.encoder.sample({"I_t": I[0]})["x_t"]
+      all_positions: list = []
 
-      for step in range(1, cfg["max_sequence"]-1):
+      for step in range(0, cfg["max_sequence"]-1):
 
-        I_t, x_t, I_next, x_next = model.infer(I[step], u[step-1], x_t)
+        I_t, I_tp1, x_q_t, x_p_tp1 = model.infer(I[step+1], I[step], u[step+1])
 
-        all_positions.append(x_t.to("cpu").detach().numpy()[0].tolist())
+        all_positions.append(x_q_t.to("cpu").detach().numpy()[0].tolist())
 
-        plt.cla()
-        # plt.clf()
+        visualizer.append(
+                I[step].to("cpu").detach().numpy()[0].transpose(1, 2, 0),
+                I_t.to("cpu").detach().numpy()[0].transpose(1, 2, 0),
+                I_tp1.to("cpu").detach().numpy()[0].transpose(1, 2, 0),
+                np.array(all_positions)
+        )
 
-        artists_1 = ax1.imshow(I[step].to("cpu").detach().numpy()[0].transpose(1, 2, 0))
-        artists_2 = ax2.imshow(np.clip(I_t.to("cpu").detach().numpy()[0].transpose(1, 2, 0), 0., 1.))
-        artists_3 = ax3.imshow(np.clip(I_next.to("cpu").detach().numpy()[0].transpose(1, 2, 0), 0., 1.))
-        # artists_4 = ax4.set_xlim(-10.1, 10.1)
-        # artists_4 = ax4.set_ylim(-10.1, 10.1)
-        artists_4 = ax4.scatter(np.array(all_positions)[:, 0], np.array(all_positions)[:, 1], s=0.9)
-
-        plt.pause(0.01)
-
-        frames.append([artists_1, artists_2, artists_3, artists_4])
-
-      ani = ArtistAnimation(fig, frames, interval=100)
-      ani.save('animation.mp4', writer='ffmpeg')
+      visualizer.encode(save_video_path, f"{epoch}.mp4")
