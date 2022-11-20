@@ -3,6 +3,7 @@
 import yaml
 import numpy as np
 import datetime
+import torch
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
@@ -35,6 +36,7 @@ if cfg["init_params"]:
   model.init_params()
 
 best_loss: float = 1e32
+beta: float = 0.001
 
 
 with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
@@ -44,11 +46,11 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
 
     for _ in range(int(cfg["max_episode"]/cfg["batch_size"])):
       I, u = Train_Replay.sample(cfg["batch_size"])
-      train_loss = model.train({"I": I, "u": u})
+      train_loss = model.train({"I": I, "u": u, "beta": beta})
       writer.add_scalar('train_loss', train_loss, epoch)
 
       I, u = Test_Replay.sample(1)
-      test_loss = model.test({"I": I, "u": u})
+      test_loss = model.test({"I": I, "u": u, "beta": beta})
       writer.add_scalar('test_loss', test_loss, epoch)
 
       pbar.set_postfix({"train": train_loss, "test": test_loss})
@@ -70,9 +72,12 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
 
         visualizer.append(
                 I[step].to("cpu").detach().numpy()[0].transpose(1, 2, 0),
-                I_t.to("cpu").detach().numpy()[0].transpose(1, 2, 0),
-                I_tp1.to("cpu").detach().numpy()[0].transpose(1, 2, 0),
+                I_t.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0),
+                I_tp1.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0),
                 np.array(all_positions)
         )
 
       visualizer.encode(save_video_path, f"{epoch}.mp4")
+
+    if 30 <= epoch and epoch <= 60:
+      beta += 0.0333

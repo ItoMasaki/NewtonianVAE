@@ -10,6 +10,7 @@ from pixyz.losses import KullbackLeibler as KL
 from pixyz.losses import Expectation as E
 from pixyz.losses import LogProb
 from pixyz.losses import IterativeLoss
+from pixyz.losses import Parameter
 from pixyz.models import Model
 
 from models.distributions import Encoder, Decoder, Transition, Velocity
@@ -18,13 +19,14 @@ torch.backends.cudnn.benchmark = True
 
 class NewtonianVAE(Model):
   def __init__(self,
-          optimizer: optim.Optimizer=optim.Adam,
+          optimizer=optim.Adam,
           optimizer_params: dict={},
           clip_grad_norm: bool=True,
           clip_grad_value: bool=True,
           delta_time: float=0.5,
           device: str="cuda",
           use_amp: bool=True):
+
     #-------------------------#
     # Define models           #
     #-------------------------#
@@ -34,11 +36,16 @@ class NewtonianVAE(Model):
     self.velocity = Velocity(delta_time).to(device)
 
     #-------------------------#
+    # Define hyperparams      #
+    #-------------------------#
+    beta = Parameter("beta")
+
+    #-------------------------#
     # Define loss functions   #
     #-------------------------#
     recon_loss = E(self.transition, LogProb(self.decoder))
     kl_loss = KL(self.transition, self.encoder)
-    self.step_loss = (kl_loss - recon_loss).mean()
+    self.step_loss = (beta*kl_loss - recon_loss).mean()
 
     self.distributions = nn.ModuleList([self.encoder, self.decoder, self.transition, self.velocity])
 
@@ -46,7 +53,7 @@ class NewtonianVAE(Model):
     # set params and optim    #
     #-------------------------#
     params = self.distributions.parameters()
-    self.optimizer = optimizer(params, lr=3e-4, **optimizer_params)
+    self.optimizer = optimizer(params, **{"lr": 3e-4})
 
     #-------------------------#
     # set for AMP             #
@@ -63,6 +70,7 @@ class NewtonianVAE(Model):
 
     I = input_var_dict["I"]
     u = input_var_dict["u"]
+    beta = input_var_dict["beta"]
 
     total_loss = 0.
 
@@ -83,7 +91,7 @@ class NewtonianVAE(Model):
       v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
       # KL[q(x^q_{t+1} | I_{t+1}) || p(x^p_{t+1} | x^p_t, u_t; v_{t+1})] - E_p(x^p_{t+1} | x^p_t, u_t; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-      step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1]})
+      step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
 
       total_loss += step_loss
 

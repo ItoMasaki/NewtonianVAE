@@ -17,7 +17,7 @@ if config["env"] == "reacher_nvae":
 elif config["env"] == "reacher":
   env = load(domain_name="reacher", task_name="hard")
 elif config["env"] == "point_mass":
-  env = load(domain_name="point_mass", task_name="hard")
+  env = load(domain_name="point_mass", task_name="easy")
 else:
   raise NotImplementedError(f"{config['env']}")
 
@@ -49,7 +49,7 @@ for mode in ["train", "test"]:
     env = load(domain_name="reacher", task_name="hard")
 
   elif config["env"] == "point_mass":
-    env = load(domain_name="point_mass", task_name="hard")
+    env = load(domain_name="point_mass", task_name="easy")
 
   else:
     raise NotImplementedError(f"{config['env']}")
