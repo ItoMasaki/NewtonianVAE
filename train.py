@@ -7,8 +7,7 @@ from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
 from models import NewtonianVAE
-from models.memory import ExperienceReplay
-from utils import visualize
+from utils import visualize, memory
 
 
 cfg_path = "config/sample/train.yml"
@@ -21,8 +20,8 @@ save_weight_path = f"{save_root_path}/weights"
 save_video_path = f"{save_root_path}/videos"
 
 
-Train_Replay = ExperienceReplay(cfg["max_episode"], cfg["max_sequence"], 2, cfg["device"])
-Test_Replay = ExperienceReplay(1, cfg["max_sequence"], 2, cfg["device"])
+Train_Replay = memory.ExperienceReplay(cfg["max_episode"], cfg["max_sequence"], 2, cfg["device"])
+Test_Replay = memory.ExperienceReplay(1, cfg["max_sequence"], 2, cfg["device"])
 Train_Replay.load(cfg["train_path"])
 Test_Replay.load(cfg["test_path"])
 

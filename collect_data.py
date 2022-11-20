@@ -3,7 +3,7 @@ import numpy as np
 import yaml
 from matplotlib import pyplot as plt
 
-from models.memory import ExperienceReplay
+from utils import memory
 from environments import load
 
 
@@ -67,7 +67,7 @@ for mode in ["train", "test"]:
   print(f"####################################################")
   
   
-  save_memory = ExperienceReplay(max_episode, max_sequence, 2, "cpu")
+  save_memory = memory.ExperienceReplay(max_episode, max_sequence, 2, "cpu")
   
   
   print("Collect data")

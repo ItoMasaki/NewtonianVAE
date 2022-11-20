@@ -60,13 +60,11 @@ class Decoder(dist.Normal):
     )
 
     self.loc = nn.Sequential(
-        nn.ConvTranspose2d(in_channels=1024, out_channels=128, kernel_size=5, stride=2),
-        activation_func(),
-        nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=5, stride=2),
-        activation_func(),
-        nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=6, stride=2),
-        activation_func(),
-        nn.ConvTranspose2d(in_channels=32, out_channels=output_dim, kernel_size=6, stride=2),
+        nn.Conv2d(self.latent_n+2, self.sbd_conv_ch[0], 3, padding=1),
+        nn.LeakyReLU(),
+        nn.Conv2d(self.sbd_conv_ch[0], self.sbd_conv_ch[1], 3, padding=1),
+        nn.LeakyReLU(),
+        nn.Conv2d(self.sbd_conv_ch[1], 3, 3, padding=1),
         nn.Sigmoid(),
     )
 
