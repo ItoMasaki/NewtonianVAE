@@ -2,6 +2,7 @@
 import numpy as np
 import yaml
 from matplotlib import pyplot as plt
+from tqdm import tqdm
 
 from models.memory import ExperienceReplay
 from environments import load
@@ -71,8 +72,7 @@ for mode in ["train", "test"]:
   
   
   print("Collect data")
-  for episode in range(max_episode):
-    print(f"Episode : {episode + 1}/{max_episode}", end="\r")
+  for episode in tqdm(range(max_episode)):
     time_step = env.reset()
   
     actions = []
