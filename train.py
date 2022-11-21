@@ -3,6 +3,7 @@
 import yaml
 import numpy as np
 import datetime
+import torch
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
@@ -71,8 +72,8 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
 
         visualizer.append(
                 I[step].to("cpu").detach().numpy()[0].transpose(1, 2, 0),
-                I_t.to("cpu").detach().numpy()[0].transpose(1, 2, 0),
-                I_tp1.to("cpu").detach().numpy()[0].transpose(1, 2, 0),
+                I_t.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0),
+                I_tp1.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0),
                 np.array(all_positions)
         )
 

@@ -59,7 +59,7 @@ class Decoder(dist.Normal):
         nn.Linear(2, 1024),
     )
 
-    self.loc = nn.Sequential(
+    self.loc = torch.nn.DataParallel( nn.Sequential(
         nn.ConvTranspose2d(in_channels=1024, out_channels=128, kernel_size=5, stride=2),
         activation_func(),
         nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=5, stride=2),
@@ -68,7 +68,7 @@ class Decoder(dist.Normal):
         activation_func(),
         nn.ConvTranspose2d(in_channels=32, out_channels=output_dim, kernel_size=6, stride=2),
         nn.Sigmoid(),
-    )
+    ))
 
   def forward(self, x_t: torch.Tensor) -> dict:
 
