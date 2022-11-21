@@ -21,8 +21,8 @@ class NewtonianVAE(Model):
   def __init__(self,
           optimizer=optim.Adam,
           optimizer_params: dict={},
-          clip_grad_norm: bool=True,
-          clip_grad_value: bool=True,
+          clip_grad_norm: bool=False,
+          clip_grad_value: bool=False,
           delta_time: float=0.5,
           device: str="cuda",
           use_amp: bool=True):
