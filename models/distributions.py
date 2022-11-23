@@ -61,14 +61,14 @@ class Decoder(dist.Normal):
         nn.Linear(2, 10)
     )
 
-    self.loc = nn.DataParallel( nn.Sequential(
+    self.loc = nn.Sequential(
         nn.Conv2d(10+2, 64, 3, stride=1, padding=1),
         nn.LeakyReLU(),
         nn.Conv2d(64, 64, 3, stride=1, padding=1),
         nn.LeakyReLU(),
         nn.Conv2d(64, 3, 3, stride=1, padding=1),
         nn.Sigmoid(),
-    ))
+    )
 
     self.image_size = 64
     a = np.linspace(-1, 1, self.image_size)
