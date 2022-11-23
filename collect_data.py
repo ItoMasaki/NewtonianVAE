@@ -12,9 +12,7 @@ parser = argparse.ArgumentParser(description='Collection dataset')
 parser.add_argument('--config', type=str, help='config path ex. config/sample/collect_dataset/point_mass.yml')
 args = parser.parse_args()
 
-yaml_path = args.config
-
-with open(yaml_path) as file:
+with open(args.config) as file:
     config = yaml.safe_load(file)
 
 
