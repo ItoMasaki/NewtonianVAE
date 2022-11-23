@@ -1,6 +1,6 @@
 # NewtonianVAE
-NewtonianVAE : [here](https://arxiv.org/abs/2006.01959)  
-Tactile-Sensitive NewtonianVAE : [here](https://arxiv.org/abs/2203.05955)
+[Jaques, Miguel, Michael Burke, and Timothy M. Hospedales. "Newtonianvae: Proportional control and goal identification from pixels via physical latent spaces." Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2021.](https://arxiv.org/abs/2006.01959)  
+[Okumura, Ryo, Nobuki Nishio, and Tadahiro Taniguchi. "Tactile-Sensitive NewtonianVAE for High-Accuracy Industrial Connector-Socket Insertion." arXiv preprint arXiv:2203.05955 (2022).](https://arxiv.org/abs/2203.05955)
 
 
 ## How to train [ sample ]
