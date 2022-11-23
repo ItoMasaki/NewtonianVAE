@@ -1,4 +1,4 @@
-# NewtonianVAE: Proportional Control and Goal Identification from Pixels via Physical Latent Spaces
+# NewtonianVAE
 NewtonianVAE : [here](https://arxiv.org/abs/2006.01959)  
 Tactile-Sensitive NewtonianVAE : [here](https://arxiv.org/abs/2203.05955)
 
