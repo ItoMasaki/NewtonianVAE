@@ -1,12 +1,15 @@
 # NewtonianVAE: Proportional Control and Goal Identification from Pixels via Physical Latent Spaces
-Original paper is [here](https://arxiv.org/abs/2006.01959)  
+NewtonianVAE : [here](https://arxiv.org/abs/2006.01959)  
+Tactile-Sensitive NewtonianVAE : [here](https://arxiv.org/abs/2203.05955)
 
-## Collect data
+## How to train using sample data
+
+### Collect data
 ```bash
 ./collect_data
 ```
 
-## Train model
+### Train model
 ```bash
 ./train
 ```
