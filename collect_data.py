@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import numpy as np
 import yaml
 from matplotlib import pyplot as plt
@@ -7,48 +8,27 @@ from utils import memory
 from environments import load
 
 
-yaml_path = "config/sample/collect_point_mass_dataset.yml"
+parser = argparse.ArgumentParser(description='Collection dataset')
+parser.add_argument('--config', type=str, help='config path ex. config/sample/collect_dataset/point_mass.yml')
+args = parser.parse_args()
 
-with open(yaml_path) as file:
+with open(args.config) as file:
     config = yaml.safe_load(file)
 
-if config["env"] == "reacher_nvae":
-  env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": False})
-elif config["env"] == "reacher":
-  env = load(domain_name="reacher", task_name="hard")
-elif config["env"] == "point_mass":
-  env = load(domain_name="point_mass", task_name="easy")
-else:
-  raise NotImplementedError(f"{config['env']}")
 
+for mode in config.keys():
+  env_name = config["train"]["env"]
 
-#############################
-print("[*] Check an enviroment")
-time_step = env.reset()
-
-for _ in range(100):
-  action = np.array([0.5+(np.random.rand()-0.5), 0.5+(np.random.rand()-0.5)/2])
-  time_step = env.step(action)
-  video = env.physics.render(64, 64, camera_id=0)
-
-  plt.cla()
-  plt.imshow(video)
-  plt.pause(0.01)
-
-#############################
-
-
-for mode in ["train", "test"]:
-  if config["env"] == "reacher_nvae":
+  if env_name == "reacher_nvae":
     if mode == "test":
       env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": False})
     else:
       env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": True})
 
-  elif config["env"] == "reacher":
+  elif env_name == "reacher":
     env = load(domain_name="reacher", task_name="hard")
 
-  elif config["env"] == "point_mass":
+  elif env_name == "point_mass":
     env = load(domain_name="point_mass", task_name="easy")
 
   else:
@@ -91,10 +71,6 @@ for mode in ["train", "test"]:
       actions.append(action[np.newaxis, :])
       observations.append(video.transpose(2, 0, 1)[np.newaxis, :, :, :]/255.0)
 
-      # plt.cla()
-      # plt.imshow(video)
-      # plt.pause(0.0001)
-    
     save_memory.append(np.concatenate(observations), np.concatenate(actions), episode)
   
   
