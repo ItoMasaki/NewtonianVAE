@@ -78,6 +78,8 @@ class NewtonianVAE(Model):
 
     # x^q_tn1 ~ p(x^q_tn1 | I_tn1)
     x_q_tn1 = self.encoder.sample({"I_t": I[0]}, reparam=True)["x_t"]
+    # x^p_tn1 ~ p(x^q_tn1 | I_tn1)
+    x_p_t = self.encoder.sample({"I_t": I[1]}, reparam=True)["x_t"]
 
     for step in range(1, T-1):
 
@@ -91,11 +93,12 @@ class NewtonianVAE(Model):
       v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
       # KL[q(x^q_{t+1} | I_{t+1}) || p(x^p_{t+1} | x^p_t, u_t; v_{t+1})] - E_p(x^p_{t+1} | x^p_t, u_t; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-      step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
+      step_loss, variables = self.step_loss({'x_tn1': x_p_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
 
       total_loss += step_loss
 
       x_q_tn1 = x_q_t
+      x_p_t = variables["x_t"]
 
     return total_loss/T
       
@@ -134,7 +137,7 @@ class NewtonianVAE(Model):
 
     return loss.item()
 
-  def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor):
+  def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor, x_p_t: torch.Tensor):
     self.distributions.eval()
 
     with torch.no_grad():
@@ -156,7 +159,7 @@ class NewtonianVAE(Model):
         v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u_t)["v_t"]
 
         # p(x_p_{t+1} | x_p_t, v_{t+1})
-        x_p_tp1 = self.transition.sample_mean({"x_tn1":x_q_t, "v_t": v_tp1})
+        x_p_tp1 = self.transition.sample_mean({"x_tn1":x_p_t, "v_t": v_tp1})
 
         # p(I_{t+1} | x_{t+1})
         I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1})

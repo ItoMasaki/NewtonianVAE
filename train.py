@@ -64,9 +64,11 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
 
       all_positions: list = []
 
+      x_p_t = model.encoder.sample({"I_t": I[0]}, reparam=True)["x_t"]
+
       for step in range(0, cfg["max_sequence"]-1):
 
-        I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(I[step+1], I[step], u[step+1])
+        I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(I[step+1], I[step], u[step+1], x_p_t)
 
         all_positions.append(x_q_t.to("cpu").detach().numpy()[0].tolist())
 
@@ -76,6 +78,8 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
                 I_tp1.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0),
                 np.array(all_positions)
         )
+
+        x_p_t = x_p_tp1
 
       visualizer.encode(save_video_path, f"{epoch}.mp4")
 
