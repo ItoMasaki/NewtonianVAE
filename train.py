@@ -48,7 +48,7 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
   for epoch in pbar:
     pbar.set_description(f"[Epoch {epoch}]")
 
-    for _ in range(int(cfg["max_episode"]/cfg["batch_size"])):
+    for _ in range(200):
       I, u = Train_Replay.sample(cfg["batch_size"])
       train_loss = model.train({"I": I, "u": u, "beta": beta})
       writer.add_scalar('train_loss', train_loss, epoch)
@@ -68,6 +68,8 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
 
       all_positions: list = []
 
+      x_p_t = model.encoder.sample({"I_t": I[0]}, reparam=True)["x_t"]
+
       for step in range(0, cfg["max_sequence"]-1):
 
         I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(I[step+1], I[step], u[step+1])
@@ -80,6 +82,8 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
                 I_tp1.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0),
                 np.array(all_positions)
         )
+
+        x_p_t = x_p_tp1
 
       visualizer.encode(save_video_path, f"{epoch}.mp4")
 
