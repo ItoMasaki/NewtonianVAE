@@ -10,6 +10,7 @@ from pixyz.losses import KullbackLeibler as KL
 from pixyz.losses import Expectation as E
 from pixyz.losses import LogProb
 from pixyz.losses import IterativeLoss
+from pixyz.losses import Parameter
 from pixyz.models import Model
 
 from models.distributions import Encoder, Decoder, Transition, Velocity
@@ -18,13 +19,14 @@ torch.backends.cudnn.benchmark = True
 
 class NewtonianVAE(Model):
   def __init__(self,
-          optimizer: optim.Optimizer=optim.Adam,
+          optimizer=optim.Adam,
           optimizer_params: dict={},
-          clip_grad_norm: bool=True,
-          clip_grad_value: bool=True,
+          clip_grad_norm: bool=False,
+          clip_grad_value: bool=False,
           delta_time: float=0.5,
           device: str="cuda",
           use_amp: bool=True):
+
     #-------------------------#
     # Define models           #
     #-------------------------#
@@ -32,6 +34,10 @@ class NewtonianVAE(Model):
     self.decoder = Decoder().to(device)
     self.transition = Transition(delta_time).to(device)
     self.velocity = Velocity(delta_time).to(device)
+
+    #-------------------------#
+    # Define hyperparams      #
+    #-------------------------#
 
     #-------------------------#
     # Define loss functions   #
@@ -46,7 +52,7 @@ class NewtonianVAE(Model):
     # set params and optim    #
     #-------------------------#
     params = self.distributions.parameters()
-    self.optimizer = optimizer(params, lr=3e-4, **optimizer_params)
+    self.optimizer = optimizer(params, **{"lr": 3e-4})
 
     #-------------------------#
     # set for AMP             #

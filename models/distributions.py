@@ -1,3 +1,5 @@
+import numpy as np
+
 import torch
 from torch import nn
 from torch import optim
@@ -27,7 +29,8 @@ class Encoder(dist.Normal):
     )
 
     self.loc = nn.Sequential(
-        nn.Linear(1024, 2),
+        nn.Linear(1024, 4),
+        nn.ReLU()
     )
 
     self.scale = nn.Sequential(
@@ -35,12 +38,17 @@ class Encoder(dist.Normal):
         nn.Softplus()
     )
 
+    self.transform_coordinate = nn.Sequential(
+        nn.Linear(2, 1),
+    )
+
   def forward(self, I_t: torch.Tensor) -> dict:
     feature = self.encoder(I_t)
     B, C, W, H = feature.shape
     feature = feature.reshape((B, C*W*H))
     
-    loc = self.loc(feature)
+    d_1, d_2 = torch.chunk(self.loc(feature), 2, dim=-1)
+    loc = torch.cat([self.transform_coordinate(d_1), self.transform_coordinate(d_2)], dim=-1)
     scale = self.scale(feature)
 
     return {"loc": loc, "scale": scale}
@@ -56,10 +64,10 @@ class Decoder(dist.Normal):
     activation_func = getattr(nn, act_func_name)
 
     self.up_size_feature = nn.Sequential(
-        nn.Linear(2, 1024),
+        nn.Linear(4, 1024),
     )
 
-    self.loc = torch.nn.DataParallel( nn.Sequential(
+    self.loc = nn.Sequential(
         nn.ConvTranspose2d(in_channels=1024, out_channels=128, kernel_size=5, stride=2),
         activation_func(),
         nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=5, stride=2),
@@ -68,11 +76,17 @@ class Decoder(dist.Normal):
         activation_func(),
         nn.ConvTranspose2d(in_channels=32, out_channels=output_dim, kernel_size=6, stride=2),
         nn.Sigmoid(),
-    ))
+    )
+
+    self.transform_coordinate = nn.Sequential(
+        nn.Linear(1, 2),
+    )
 
   def forward(self, x_t: torch.Tensor) -> dict:
+    d_1, d_2 = torch.chunk(x_t, 2, dim=-1)
+    feature = torch.cat([self.transform_coordinate(d_1), self.transform_coordinate(d_2)], dim=-1)
 
-    feature = self.up_size_feature(x_t)
+    feature = self.up_size_feature(feature)
     B, C = feature.shape
     feature = feature.view((B, 1024, 1, 1))
 

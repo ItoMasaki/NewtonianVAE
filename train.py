@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import yaml
 import numpy as np
 import datetime
@@ -8,12 +9,14 @@ from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
 from models import NewtonianVAE
-from models.memory import ExperienceReplay
-from utils import visualize
+from utils import visualize, memory
 
 
-cfg_path = "config/sample/train.yml"
-with open(cfg_path) as file:
+parser = argparse.ArgumentParser(description='Collection dataset')
+parser.add_argument('--config', type=str, help='config path ex. config/sample/train/point_mass.yml')
+args = parser.parse_args()
+
+with open(args.config) as file:
   cfg = yaml.safe_load(file)
 
 timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -22,8 +25,8 @@ save_weight_path = f"{save_root_path}/weights"
 save_video_path = f"{save_root_path}/videos"
 
 
-Train_Replay = ExperienceReplay(cfg["max_episode"], cfg["max_sequence"], 2, cfg["device"])
-Test_Replay = ExperienceReplay(1, cfg["max_sequence"], 2, cfg["device"])
+Train_Replay = memory.ExperienceReplay(cfg["max_episode"], cfg["max_sequence"], 2, cfg["device"])
+Test_Replay = memory.ExperienceReplay(1, cfg["max_sequence"], 2, cfg["device"])
 Train_Replay.load(cfg["train_path"])
 Test_Replay.load(cfg["test_path"])
 
@@ -63,6 +66,8 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
         best_loss = train_loss
 
       all_positions: list = []
+
+      x_p_t = model.encoder.sample({"I_t": I[0]}, reparam=True)["x_t"]
 
       for step in range(0, cfg["max_sequence"]-1):
 

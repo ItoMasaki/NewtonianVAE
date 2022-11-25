@@ -1,4 +1,4 @@
-batch_size: 10
+batch_size: 8
 max_episode: 1000
 max_sequence: 100
 epoch_max: 300 
