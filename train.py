@@ -50,11 +50,11 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
 
     for _ in range(200):
       I, u = Train_Replay.sample(cfg["batch_size"])
-      train_loss = model.train({"I": I, "u": u, "beta": beta})
+      train_loss = model.train({"I": I, "u": u})
       writer.add_scalar('train_loss', train_loss, epoch)
 
       I, u = Test_Replay.sample(1)
-      test_loss = model.test({"I": I, "u": u, "beta": beta})
+      test_loss = model.test({"I": I, "u": u})
       writer.add_scalar('test_loss', test_loss, epoch)
 
       pbar.set_postfix({"train": train_loss, "test": test_loss})

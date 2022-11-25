@@ -52,44 +52,33 @@ class Decoder(dist.Normal):
   """
     p(I_t | x_t) = N(I_t | x_t)
   """
-  def __init__(self, input_dim: int=2, output_dim: int=3, act_func_name: str="ReLU", use_spatial_broadcast: bool=True, device: str="cuda"):
+  def __init__(self, input_dim: int=2, output_dim: int=3, act_func_name: str="ReLU"):
     super().__init__(var=["I_t"], cond_var=["x_t"])
 
     activation_func = getattr(nn, act_func_name)
 
-    self.up_size_vector = nn.Sequential(
-        nn.Linear(2, 10)
+    self.up_size_feature = nn.Sequential(
+        nn.Linear(2, 1024),
     )
 
     self.loc = nn.Sequential(
-        nn.Conv2d(10+2, 64, 3, stride=1, padding=1),
-        nn.LeakyReLU(),
-        nn.Conv2d(64, 64, 3, stride=1, padding=1),
-        nn.LeakyReLU(),
-        nn.Conv2d(64, 3, 3, stride=1, padding=1),
+        nn.ConvTranspose2d(in_channels=1024, out_channels=128, kernel_size=5, stride=2),
+        activation_func(),
+        nn.ConvTranspose2d(in_channels=128, out_channels=64, kernel_size=5, stride=2),
+        activation_func(),
+        nn.ConvTranspose2d(in_channels=64, out_channels=32, kernel_size=6, stride=2),
+        activation_func(),
+        nn.ConvTranspose2d(in_channels=32, out_channels=output_dim, kernel_size=6, stride=2),
         nn.Sigmoid(),
     )
 
-    self.image_size = 64
-    a = np.linspace(-1, 1, self.image_size)
-    b = np.linspace(-1, 1, self.image_size)
-    x, y = np.meshgrid(a, b)
-    x = x.reshape(self.image_size, self.image_size, 1)
-    y = y.reshape(self.image_size, self.image_size, 1)
-    self.xy = np.concatenate((x,y), axis=-1)
-
-    self.device = device
-
   def forward(self, x_t: torch.Tensor) -> dict:
-    batchsize = len(x_t)
-    xy_tiled = torch.from_numpy(np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
-    
-    z_tiled = torch.repeat_interleave(self.up_size_vector(x_t), self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 10)
-    
-    z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
-    z_and_xy = z_and_xy.permute(0, 3, 2, 1)
 
-    loc = self.loc(z_and_xy)
+    feature = self.up_size_feature(x_t)
+    B, C = feature.shape
+    feature = feature.view((B, 1024, 1, 1))
+
+    loc = self.loc(feature)
 
     return {"loc": loc, "scale": 0.01}
 
