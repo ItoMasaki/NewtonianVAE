@@ -25,7 +25,7 @@ class NewtonianVAE(Model):
           clip_grad_value: bool=True,
           delta_time: float=0.5,
           device: str="cuda",
-          use_amp: bool=True):
+          use_amp: bool=False):
 
     #-------------------------#
     # Define models           #
