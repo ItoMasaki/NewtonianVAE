@@ -170,8 +170,11 @@ class NewtonianVAE(Model):
       pass
 
     torch.save({
-      'distributions': self.distributions.state_dict(),
+      'distributions': self.distributions.to("cpu").state_dict(),
     }, f"{path}/{filename}")
+
+  def load(self, path, filename):
+    self.distributions.load_state_dict(torch.load(f"{path}/{filename}", map_location=torch.device('cpu'))['distributions'])
 
   def init_params(self):
 

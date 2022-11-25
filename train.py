@@ -40,7 +40,6 @@ if cfg["init_params"]:
   model.init_params()
 
 best_loss: float = 1e32
-beta: float = 0.001
 
 
 with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
@@ -86,6 +85,3 @@ with tqdm(range(1, cfg["epoch_max"]+1)) as pbar:
         x_p_t = x_p_tp1
 
       visualizer.encode(save_video_path, f"{epoch}.mp4")
-
-    if 30 <= epoch and epoch <= 60:
-      beta += 0.0333

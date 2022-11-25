@@ -58,13 +58,14 @@ for mode in config.keys():
     actions = []
     observations = []
 
-    direction = np.random.uniform(-1, 1, 2)
+    # direction = np.random.uniform(-1, 1, 2)
+    action = np.random.uniform(-1, 1, 2)
 
     for _ in range(max_sequence):
-      if mode == "train":
-        action = np.random.uniform(-1, 1, 2)
-      else:
-        action = np.array([np.random.normal(direction[0], 0.1), np.random.normal(direction[1]/2., 0.1)])
+      # if mode == "train":
+      #   action = np.random.uniform(-1, 1, 2)
+      # else:
+      #   action = np.array([np.random.normal(direction[0], 0.1), np.random.normal(direction[1]/2., 0.1)])
       time_step = env.step(action)
       video = env.physics.render(64, 64, camera_id=0)
   

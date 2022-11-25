@@ -1,0 +1,5 @@
+env: point_mass
+episodes: 100
+device: cuda
+weight_path: results
+weight_filename: best.weight
