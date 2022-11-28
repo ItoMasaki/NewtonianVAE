@@ -1,102 +1,81 @@
 #!/usr/bin/env python3
+import argparse
 import numpy as np
 import yaml
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from models.memory import ExperienceReplay
+from utils import memory
 from environments import load
 
 
-yaml_path = "config/sample/collect_point_mass_dataset.yml"
+parser = argparse.ArgumentParser(description='Collection dataset')
+parser.add_argument('--config', type=str,
+                    help='config path ex. config/sample/collect_dataset/point_mass.yml')
+args = parser.parse_args()
 
-with open(yaml_path) as file:
+with open(args.config) as file:
     config = yaml.safe_load(file)
 
-if config["env"] == "reacher_nvae":
-  env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": False})
-elif config["env"] == "reacher":
-  env = load(domain_name="reacher", task_name="hard")
-elif config["env"] == "point_mass":
-  env = load(domain_name="point_mass", task_name="hard")
-else:
-  raise NotImplementedError(f"{config['env']}")
 
+for mode in config.keys():
+    env_name = config["train"]["env"]
 
-#############################
-print("[*] Check an enviroment")
-time_step = env.reset()
+    if env_name == "reacher_nvae":
+        if mode == "test":
+            env = load(domain_name="reacher_nvae", task_name="hard",
+                       task_kwargs={"whole_range": False})
+        else:
+            env = load(domain_name="reacher_nvae", task_name="hard",
+                       task_kwargs={"whole_range": True})
 
-for _ in range(100):
-  action = np.array([0.5+(np.random.rand()-0.5), 0.5+(np.random.rand()-0.5)/2])
-  time_step = env.step(action)
-  video = env.physics.render(64, 64, camera_id=0)
+    elif env_name == "reacher":
+        env = load(domain_name="reacher", task_name="hard")
 
-  plt.cla()
-  plt.imshow(video)
-  plt.pause(0.01)
+    elif env_name == "point_mass":
+        env = load(domain_name="point_mass", task_name="easy")
 
-#############################
-
-
-for mode in ["train", "test"]:
-  if config["env"] == "reacher_nvae":
-    if mode == "test":
-      env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": False})
     else:
-      env = load(domain_name="reacher_nvae", task_name="hard", task_kwargs={"whole_range": True})
+        raise NotImplementedError(f"{config['env']}")
 
-  elif config["env"] == "reacher":
-    env = load(domain_name="reacher", task_name="hard")
+    max_episode = config[mode]["max_episode"]
+    max_sequence = config[mode]["max_sequence"]
+    save_path = config[mode]["save_path"]
+    save_filename = config[mode]["save_filename"]
 
-  elif config["env"] == "point_mass":
-    env = load(domain_name="point_mass", task_name="hard")
+    print(f"############## CONFIG PARAMS [{mode}] ##############")
+    print(f"  max_episode : {max_episode}")
+    print(f" max_sequence : {max_sequence}")
+    print(f"    save_path : {save_path}")
+    print(f"save_filename : {save_filename}")
+    print(f"####################################################")
 
-  else:
-    raise NotImplementedError(f"{config['env']}")
+    save_memory = memory.ExperienceReplay(max_episode, max_sequence, 2, "cpu")
 
-  max_episode = config[mode]["max_episode"]
-  max_sequence = config[mode]["max_sequence"]
-  save_path = config[mode]["save_path"]
-  save_filename = config[mode]["save_filename"]
-  
-  print(f"############## CONFIG PARAMS [{mode}] ##############")
-  print(f"  max_episode : {max_episode}")
-  print(f" max_sequence : {max_sequence}")
-  print(f"    save_path : {save_path}")
-  print(f"save_filename : {save_filename}")
-  print(f"####################################################")
-  
-  
-  save_memory = ExperienceReplay(max_episode, max_sequence, 2, "cpu")
-  
-  
-  print("Collect data")
-  for episode in tqdm(range(max_episode)):
-    time_step = env.reset()
-  
-    actions = []
-    observations = []
+    print("Collect data")
+    for episode in tqdm(range(max_episode)):
+        time_step = env.reset()
 
-    direction = np.random.uniform(-1, 1, 2)
+        actions = []
+        observations = []
 
-    for _ in range(max_sequence):
-      if mode == "train":
+        # direction = np.random.uniform(-1, 1, 2)
         action = np.random.uniform(-1, 1, 2)
-      else:
-        action = np.array([np.random.normal(direction[0], 0.1), np.random.normal(direction[1]/2., 0.1)])
-      time_step = env.step(action)
-      video = env.physics.render(64, 64, camera_id=0)
-  
-      actions.append(action[np.newaxis, :])
-      observations.append(video.transpose(2, 0, 1)[np.newaxis, :, :, :]/255.0)
 
-      # plt.cla()
-      # plt.imshow(video)
-      # plt.pause(0.0001)
-    
-    save_memory.append(np.concatenate(observations), np.concatenate(actions), episode)
-  
-  
-  print()
-  save_memory.save(save_path, save_filename)
+        for _ in range(max_sequence):
+            # if mode == "train":
+            #   action = np.random.uniform(-1, 1, 2)
+            # else:
+            #   action = np.array([np.random.normal(direction[0], 0.1), np.random.normal(direction[1]/2., 0.1)])
+            time_step = env.step(action)
+            video = env.physics.render(64, 64, camera_id=0)
+
+            actions.append(action[np.newaxis, :])
+            observations.append(video.transpose(2, 0, 1)[
+                                np.newaxis, :, :, :]/255.0)
+
+        save_memory.append(np.concatenate(observations),
+                           np.concatenate(actions), episode)
+
+    print()
+    save_memory.save(save_path, save_filename)

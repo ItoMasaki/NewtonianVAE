@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
     
 
 class ExperienceReplay():
-  def __init__(self, batch_size, sequence_size, action_size, device):
+  def __init__(self, batch_size, sequence_size, action_size, path, device):
     self.device = device
     self.batch_size = batch_size
     self.sequence_size = sequence_size
@@ -18,6 +18,17 @@ class ExperienceReplay():
     self.full = False  # Tracks if memory has been filled/all slots are valid
     # Tracks how much experience has been used in total
     self.steps, self.episodes = 0, 0
+
+    self.load(path)
+
+  def __len__(self):
+    return len(self.actions)
+
+  def __getitem__(self, index):
+    colors = torch.from_numpy(self.colors[index]).to(self.device)
+    actions = torch.from_numpy(self.actions[index]).to(self.device)
+
+    return colors, actions
 
   def append(self, color, action, batch):
     self.colors[batch] = color

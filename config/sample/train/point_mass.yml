@@ -1,0 +1,67 @@
+batch_size: &batch_size 1
+episode_size: 1000
+epoch_size: 300 
+sequence_size: &sequence_size 100
+check_epoch: 10
+load_model: False
+load_model_path: results/2022_11_27_23_29_53/weights
+load_model_file: 300.weight
+device: &device cuda:0
+
+
+model:
+  delta_time: &delta_time 0.5
+  clip_grad_norm: False
+  clip_grad_value: False
+  device: *device
+  use_amp: True
+
+  encoder_param:
+    input_dim: 3
+    output_dim: 2
+    act_func_name: ReLU
+
+  decoder_param:
+    input_dim: 2
+    output_dim: 3
+    act_func_name: LeakyReLU
+    device: *device
+
+  transition_param:
+    delta_time: *delta_time
+
+  velocity_param:
+    act_func_name: ReLU
+    delta_time: *delta_time
+
+  optimizer: Adam
+  optimizer_params:
+    lr: 0.0003
+
+
+train:
+  batch_size: *batch_size
+  sequence_size: *sequence_size
+  action_size: 2
+  path: "datasets/sample/point_mass/train.npz"
+  device: *device
+
+
+test:
+  batch_size: 1
+  sequence_size: *sequence_size
+  action_size: 2
+  path: "datasets/sample/point_mass/test.npz"
+  device: *device
+
+
+train_loader:
+  batch_size: *batch_size
+  shuffle: True
+  drop_last: True
+
+
+test_loader:
+  batch_size: 1
+  shuffle: False
+  drop_last: True
