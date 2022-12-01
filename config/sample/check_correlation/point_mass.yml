@@ -1,7 +1,7 @@
 env: point_mass
 episodes: 100
 device: &device cuda:0
-weight_path: results/2022_11_27_23_29_53/weights
+weight_path: results/2022_11_28_17_43_07/weights
 weight_filename: 300.weight
 
 batch_size: &batch_size 5

@@ -99,7 +99,7 @@ class Decoder(dist.Normal):
 
         loc = self.loc(z_and_xy)
 
-        return {"loc": loc, "scale": 0.01}
+        return {"loc": loc, "scale": .01}
 
 
 class Transition(dist.Normal):
@@ -116,7 +116,7 @@ class Transition(dist.Normal):
 
         x_t = x_tn1 + self.delta_time * v_t
 
-        return {"loc": x_t, "scale": 0.01}
+        return {"loc": x_t, "scale": 1.}
 
 
 class Velocity(dist.Deterministic):

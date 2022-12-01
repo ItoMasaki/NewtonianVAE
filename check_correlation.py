@@ -46,40 +46,43 @@ def main():
     observation_position = []
     latent_position = []
 
-    for episode in range(episodes):
+    for episode in range(1000):
         time_step = env.reset()
 
         action = np.random.uniform(-1, 1, 2)
 
         video = env.physics.render(64, 64, camera_id=0)
-        I_tn1 = torch.tensor(video.copy().transpose(2, 0, 1)[
+        I_t = torch.tensor(video.copy().transpose(2, 0, 1)[
                              np.newaxis, :, :, :]/255).to(torch.float32).to(cfg["device"])
 
-        x_p_t = model.encoder.sample_mean({"I_t": I_tn1})
+        x_q_t = model.encoder.sample_mean({"I_t": I_t})
 
-        for _ in range(100):
-            time_step = env.step(action)
-            u = torch.tensor(action[np.newaxis, :]).to(
-                torch.float32).to(cfg["device"])
+        observation_position.append(time_step.observation["position"])
+        latent_position.append(x_q_t.to("cpu").detach().numpy()[0])
 
-            video = env.physics.render(64, 64, camera_id=0)
-            I_t = torch.tensor(video.copy().transpose(2, 0, 1)[
-                               np.newaxis, :, :, :]/255).to(torch.float32).to(cfg["device"])
+        # for _ in range(100):
+        #     time_step = env.step(action)
+        #     u = torch.tensor(action[np.newaxis, :]).to(
+        #         torch.float32).to(cfg["device"])
 
-            rec_I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(I_t, I_tn1, u)
+        #     video = env.physics.render(64, 64, camera_id=0)
+        #     I_t = torch.tensor(video.copy().transpose(2, 0, 1)[
+        #                        np.newaxis, :, :, :]/255).to(torch.float32).to(cfg["device"])
 
-            observation_position.append(time_step.observation["position"])
-            latent_position.append(x_q_t.to("cpu").detach().numpy()[0])
-            plt.imshow(rec_I_t.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0))
-            # ax1.imshow(I_t.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0))
-            # ax2.imshow(rec_I_t.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0))
-            # ax3.imshow(rec_I_tp1.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0))
-            # ax4.scatter(x_q_t.to("cpu").detach().numpy()[:, 0], x_q_t.to("cpu").detach().numpy()[:, 1], s=1.)
-            plt.pause(0.01)
+        #     rec_I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(I_t, I_tn1, u)
 
-            plt.clf()
+        #     observation_position.append(time_step.observation["position"])
+        #     latent_position.append(x_q_t.to("cpu").detach().numpy()[0])
+        #     plt.imshow(rec_I_t.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0))
+        #     # ax1.imshow(I_t.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0))
+        #     # ax2.imshow(rec_I_t.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0))
+        #     # ax3.imshow(rec_I_tp1.to("cpu").detach().to(torch.float32).numpy()[0].transpose(1, 2, 0))
+        #     # ax4.scatter(x_q_t.to("cpu").detach().numpy()[:, 0], x_q_t.to("cpu").detach().numpy()[:, 1], s=1.)
+        #     plt.pause(0.01)
 
-            I_tn1 = I_t
+        #     plt.clf()
+
+        #     I_tn1 = I_t
 
     print("Visualization")
 
@@ -90,46 +93,44 @@ def main():
 
     value = np.corrcoef(
         all_observation_position[:, 0], all_latent_position[:, 0])
-    print(value)
+    print(value[0, 1])
     value = np.corrcoef(
         all_observation_position[:, 0], all_latent_position[:, 1])
-    print(value)
+    print(value[0, 1])
     value = np.corrcoef(
         all_observation_position[:, 1], all_latent_position[:, 0])
-    print(value)
+    print(value[0, 1])
     value = np.corrcoef(
         all_observation_position[:, 1], all_latent_position[:, 1])
-    print(value)
+    print(value[0, 1])
 
     X = all_observation_position[:, 0] / \
         np.abs(all_observation_position[:, 0]).max()
     Y = all_observation_position[:, 1] / \
         np.abs(all_observation_position[:, 1]).max()
+
     for idx in range(len(all_latent_position)):
 
         # print(X[idx], Y[idx], colorsys.hls_to_rgb(X[idx], .5, Y[idx]))
 
-        color = list(colorsys.hls_to_rgb(X[idx], .5, Y[idx]))
+        color = list(colorsys.hls_to_rgb(X[idx]/2., .5, Y[idx]))
         color[2] = 0.
 
         plt.scatter(all_latent_position[idx, 0],
-                    all_latent_position[idx, 1], color=color)
+                    all_latent_position[idx, 1], color=color, s=2)
 
     plt.show()
 
-    plt.scatter(all_latent_position[:, 0], all_latent_position[:, 1], s=1.)
+    plt.scatter(all_observation_position[:, 0], all_latent_position[:, 0], s=2.)
     plt.show()
 
-    plt.scatter(all_observation_position[:, 0], all_latent_position[:, 0], s=1.)
+    plt.scatter(all_observation_position[:, 0], all_latent_position[:, 1], s=2.)
     plt.show()
 
-    plt.scatter(all_observation_position[:, 0], all_latent_position[:, 1], s=1.)
+    plt.scatter(all_observation_position[:, 1], all_latent_position[:, 0], s=2.)
     plt.show()
 
-    plt.scatter(all_observation_position[:, 1], all_latent_position[:, 0], s=1.)
-    plt.show()
-
-    plt.scatter(all_observation_position[:, 1], all_latent_position[:, 1], s=1.)
+    plt.scatter(all_observation_position[:, 1], all_latent_position[:, 1], s=2.)
     plt.show()
 
 
