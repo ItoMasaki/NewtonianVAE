@@ -42,6 +42,7 @@ from dm_control.suite import swimmer
 from dm_control.suite import walker
 
 from environments import reacher_nvae
+from environments import point_mass_nvae
 
 # Find all domains imported.
 _DOMAINS = {name: module for name, module in locals().items()

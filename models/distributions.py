@@ -116,7 +116,7 @@ class Transition(dist.Normal):
 
         x_t = x_tn1 + self.delta_time * v_t
 
-        return {"loc": x_t, "scale": 1.}
+        return {"loc": x_t, "scale": 0.001}
 
 
 class Velocity(dist.Deterministic):
@@ -125,30 +125,57 @@ class Velocity(dist.Deterministic):
       with  [A, log(−B), log C] = diag(f(x_{t-1}, v_{t-1}, u_{t-1}))
     """
 
-    def __init__(self, delta_time: float, act_func_name: str):
+    def __init__(self, delta_time: float, act_func_name: str, device: str, use_data_efficiency: bool):
         super().__init__(var=["v_t"], cond_var=[
             "x_tn1", "v_tn1", "u_tn1"], name="f")
 
         activation_func = getattr(nn, act_func_name)
         self.delta_time = delta_time
+        self.device = device
+        self.use_data_efficiency = use_data_efficiency
 
-        self.output_coefficient = nn.Sequential(
-            nn.Linear(2*3, 2),
-            activation_func(),
-            nn.Linear(2, 2),
-            activation_func(),
-            nn.Linear(2, 2),
-            activation_func(),
-            nn.Linear(2, 6),
-        )
+        if not self.use_data_efficiency:
+            self.coefficient_A = nn.Sequential(
+                nn.Linear(2*3, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+            )
+
+            self.coefficient_B = nn.Sequential(
+                nn.Linear(2*3, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+            )
+
+            self.coefficient_C = nn.Sequential(
+                nn.Linear(2*3, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+                activation_func(),
+                nn.Linear(2, 2),
+            )
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
         _input = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)
-        coefficient = torch.diag_embed(self.output_coefficient(_input))
 
-        A, B, C = coefficient[:, 0:2, 0:2], -torch.exp(
-            coefficient[:, 2:4, 2:4]), torch.exp(coefficient[:, 4:6, 4:6])
+        # For data efficiency
+        if self.use_data_efficiency:
+            A, B, C = torch.zeros((_input.shape[0], 2, 2)).to(self.device), torch.zeros((_input.shape[0], 2, 2)).to(self.device), torch.diag_embed(torch.ones(_input.shape[0], 2)).to(self.device)
+        else:
+            A = torch.diag_embed(self.coefficient_A(_input))
+            B = torch.diag_embed(self.coefficient_B(_input))
+            C = torch.diag_embed(self.coefficient_C(_input))
 
         # Dynamics inspired by Newton's motion equation
         v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum(

@@ -1,7 +1,5 @@
-batch_size: &batch_size 1
-episode_size: 1000
-epoch_size: 300 
-sequence_size: &sequence_size 100
+batch_size: &batch_size 8
+epoch_size: 600 
 check_epoch: 10
 load_model: False
 load_model_path: results/2022_11_27_23_29_53/weights
@@ -14,7 +12,7 @@ model:
   clip_grad_norm: False
   clip_grad_value: False
   device: *device
-  use_amp: True
+  use_amp: False
 
   encoder_param:
     input_dim: 3
@@ -33,35 +31,66 @@ model:
   velocity_param:
     act_func_name: ReLU
     delta_time: *delta_time
+    device: *device
+    use_data_efficiency: False
 
   optimizer: Adam
   optimizer_params:
     lr: 0.0003
 
 
-train:
-  batch_size: *batch_size
-  sequence_size: *sequence_size
-  action_size: 2
-  path: "datasets/sample/point_mass/train.npz"
-  device: *device
+dataset:
+  path: &path datasets/sample/point_mass_100
+  train:
+    episode_size: &train_episode_size 1000
+    sequence_size: &trin_sequence_size 100
+    data:
+      path: *path
+      filename: train.npz
 
+    memory:
+      episode_size: *train_episode_size
+      sequence_size: *trin_sequence_size
+      action_size: 2
+      device: *device
 
-test:
-  batch_size: 1
-  sequence_size: *sequence_size
-  action_size: 2
-  path: "datasets/sample/point_mass/test.npz"
-  device: *device
+    loader:
+      batch_size: *batch_size
+      shuffle: True
+      drop_last: False
 
+  validation:
+    episode_size: &validation_episode_size 100
+    sequence_size: &validation_sequence_size 100
+    data:
+      path: *path
+      filename: validation.npz
 
-train_loader:
-  batch_size: *batch_size
-  shuffle: True
-  drop_last: True
+    memory:
+      episode_size: *validation_episode_size
+      sequence_size: *validation_sequence_size
+      action_size: 2
+      device: *device
 
+    loader:
+      batch_size: 1
+      shuffle: False
+      drop_last: False
 
-test_loader:
-  batch_size: 1
-  shuffle: False
-  drop_last: True
+  test:
+    episode_size: &test_episode_size 1
+    sequence_size: &test_sequence_size 100
+    data:
+      path: *path
+      filename: test.npz
+
+    memory:
+      episode_size: *test_episode_size
+      sequence_size: *test_sequence_size
+      action_size: 2
+      device: *device
+
+    loader:
+      batch_size: 1
+      shuffle: False
+      drop_last: False
