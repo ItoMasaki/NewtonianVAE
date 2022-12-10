@@ -2,23 +2,28 @@
 
 ## Setup
 
-### Install dependencies
-```
+### 1. Install dependencies
+```bash
 python3 -m pip install -r requirements.txt
 ```
 
 ## How to train [ sample ]
 
-### Collect data
+### 1. Collect data
 Below command can collect dataset.
 ```bash
-./collect_data --config config/sample/collect_dataset/point_mass.yml
+./collect_data.py --config config/sample/collect_dataset/point_mass.yml
 ```
 
-### Train model
+### 2. Train model
 Below command can train the NewtonianVAE model
 ```bash
-./train --config config/sample/train/point_mass.yml
+./train.py --config config/sample/train/point_mass.yml
+```
+
+### 3. Check correlation
+```bash
+./check_correlation.py --config config/sample/check_correlation/point_mass.yml
 ```
 
 ## Dependencies
