@@ -32,15 +32,24 @@ save_video_path = f"{save_root_path}/videos"
 os.makedirs(save_root_path, exist_ok=True)
 shutil.copy2(args.config, save_root_path+"/")
 
+#==========================#
+# Define experiment replay #
+#==========================#
 train_replay = memory.ExperienceReplay(**cfg["dataset"]["train"]["memory"])
 validation_replay = memory.ExperienceReplay(
     **cfg["dataset"]["validation"]["memory"])
 test_replay = memory.ExperienceReplay(**cfg["dataset"]["test"]["memory"])
 
+#==============#
+# Load dataset #
+#==============#
 train_replay.load(**cfg["dataset"]["train"]["data"])
 validation_replay.load(**cfg["dataset"]["validation"]["data"])
 test_replay.load(**cfg["dataset"]["test"]["data"])
 
+#====================#
+# Define data loader #
+#====================#
 train_loader = DataLoader(
     train_replay, **cfg["dataset"]["train"]["loader"])
 validation_loader = DataLoader(
@@ -51,6 +60,9 @@ visualizer = visualize.Visualization()
 
 writer = SummaryWriter(comment="NewtonianVAE")
 
+#==============#
+# Define model #
+#==============#
 model = NewtonianVAE(**cfg["model"])
 # model.init_params()
 
@@ -69,8 +81,10 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
         validation_loss: float = 0.
         test_loss: float = 0.
 
+        #================#
+        # Training phase #
+        #================#
         # for idx, (I, u, _) in enumerate(train_loader):
-
         for idx, (I, u) in enumerate(train_loader):
             train_loss += model.train(
                 {"I": I.permute(1, 0, 2, 3, 4), "u": u.permute(1, 0, 2), "beta": beta})
@@ -78,7 +92,9 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
         writer.add_scalar('train_loss', train_loss /
                           cfg["dataset"]["train"]["episode_size"], epoch - 1)
 
-        # for I, u, _ in test_loader:
+        #==================#
+        # Validation phase #
+        #==================#
         for idx, (I, u) in enumerate(validation_loader):
             validation_loss += model.test(
                 {"I": I.permute(1, 0, 2, 3, 4), "u": u.permute(1, 0, 2), "beta": beta})
@@ -86,6 +102,9 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
         writer.add_scalar('validation_loss', validation_loss /
                           cfg["dataset"]["validation"]["episode_size"], epoch - 1)
 
+        #============#
+        # Test phase #
+        #============#
         for idx, (I, u) in enumerate(test_loader):
             test_loss += model.test(
                 {"I": I.permute(1, 0, 2, 3, 4), "u": u.permute(1, 0, 2), "beta": beta})
@@ -97,10 +116,16 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
                           "train": train_loss/cfg["dataset"]["train"]["episode_size"],
                           "test": test_loss/cfg["dataset"]["test"]["episode_size"]})
 
+        #============#
+        # Save model #
+        #============#
         model.save(f"{save_weight_path}", f"{epoch}.weight")
         model.save_ckpt(f"{save_weight_path}",
                         f"train.ckpt", epoch, validation_loss)
 
+        #=================#
+        # Save best model #
+        #=================#
         if validation_loss < best_loss:
             model.save(f"{save_weight_path}", f"best.weight")
             best_loss = validation_loss
@@ -108,6 +133,9 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
         if 30 <= epoch and epoch < 60:
             beta += 0.0333
 
+        #==============#
+        # Encode video #
+        #==============#
         if epoch % cfg["check_epoch"] == 0:
 
             all_positions: list = []
