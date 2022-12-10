@@ -32,15 +32,24 @@ save_video_path = f"{save_root_path}/videos"
 os.makedirs(save_root_path, exist_ok=True)
 shutil.copy2(args.config, save_root_path+"/")
 
+#==========================#
+# Define experiment replay #
+#==========================#
 train_replay = memory.ExperienceReplay(**cfg["dataset"]["train"]["memory"])
 validation_replay = memory.ExperienceReplay(
     **cfg["dataset"]["validation"]["memory"])
 test_replay = memory.ExperienceReplay(**cfg["dataset"]["test"]["memory"])
 
+#==============#
+# Load dataset #
+#==============#
 train_replay.load(**cfg["dataset"]["train"]["data"])
 validation_replay.load(**cfg["dataset"]["validation"]["data"])
 test_replay.load(**cfg["dataset"]["test"]["data"])
 
+#====================#
+# Define data loader #
+#====================#
 train_loader = DataLoader(
     train_replay, **cfg["dataset"]["train"]["loader"])
 validation_loader = DataLoader(
