@@ -1,5 +1,12 @@
 # NewtonianVAE
 
+## Setup
+
+### Install dependencies
+```
+python3 -m pip install -r requirements.txt
+```
+
 ## How to train [ sample ]
 
 ### Collect data
@@ -27,4 +34,5 @@ tensorboardX>=2.5.1
 
 ## Citations
 - [Jaques, Miguel, Michael Burke, and Timothy M. Hospedales. "Newtonianvae: Proportional control and goal identification from pixels via physical latent spaces." Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2021.](https://arxiv.org/abs/2006.01959)  
+- [Watters, Nicholas, et al. "Spatial broadcast decoder: A simple architecture for learning disentangled representations in vaes." arXiv preprint arXiv:1901.07017 (2019).](https://arxiv.org/abs/1901.07017)
 - [Okumura, Ryo, Nobuki Nishio, and Tadahiro Taniguchi. "Tactile-Sensitive NewtonianVAE for High-Accuracy Industrial Connector-Socket Insertion." arXiv preprint arXiv:2203.05955 (2022).](https://arxiv.org/abs/2203.05955)
