@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.10
+import pprint
 import os
 import argparse
 import datetime
@@ -15,12 +16,13 @@ from utils import visualize, memory
 
 
 parser = argparse.ArgumentParser(description='Collection dataset')
-parser.add_argument('--config', type=str,
+parser.add_argument('--config', type=str, default="config/sample/train/point_mass.yml",
                     help='config path ex. config/sample/train/point_mass.yml')
 args = parser.parse_args()
 
 with open(args.config) as file:
     cfg = yaml.safe_load(file)
+    pprint.pprint(cfg)
 
 timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
 save_root_path = f"results/{timestamp}"
@@ -30,24 +32,42 @@ save_video_path = f"{save_root_path}/videos"
 os.makedirs(save_root_path, exist_ok=True)
 shutil.copy2(args.config, save_root_path+"/")
 
+#==========================#
+# Define experiment replay #
+#==========================#
 train_replay = memory.ExperienceReplay(**cfg["dataset"]["train"]["memory"])
+validation_replay = memory.ExperienceReplay(
+    **cfg["dataset"]["validation"]["memory"])
 test_replay = memory.ExperienceReplay(**cfg["dataset"]["test"]["memory"])
+
+#==============#
+# Load dataset #
+#==============#
 train_replay.load(**cfg["dataset"]["train"]["data"])
+validation_replay.load(**cfg["dataset"]["validation"]["data"])
 test_replay.load(**cfg["dataset"]["test"]["data"])
+
+#====================#
+# Define data loader #
+#====================#
 train_loader = DataLoader(
-    train_replay, **cfg["dataset"]["train"]["train_loader"])
-test_loader = DataLoader(test_replay, **cfg["dataset"]["test"]["test_loader"])
+    train_replay, **cfg["dataset"]["train"]["loader"])
+validation_loader = DataLoader(
+    test_replay, **cfg["dataset"]["validation"]["loader"])
+test_loader = DataLoader(test_replay, **cfg["dataset"]["test"]["loader"])
 
 visualizer = visualize.Visualization()
 
 writer = SummaryWriter(comment="NewtonianVAE")
 
+#==============#
+# Define model #
+#==============#
 model = NewtonianVAE(**cfg["model"])
 # model.init_params()
 
 if cfg["load_model"]:
     model.load(cfg["load_model_path"], cfg["load_model_file"])
-
 
 test_loss: float = 0.
 best_loss: float = 1e32
@@ -66,7 +86,7 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
             pbar.set_postfix({"test": test_loss, "train": train_loss})
 
         # for I, u, _ in test_loader:
-        for I, u in test_loader:
+        for I, u in validation_loader:
             test_loss = model.test(
                 {"I": I.permute(1, 0, 2, 3, 4), "u": u.permute(1, 0, 2), "beta": beta})
             writer.add_scalar('test_loss', test_loss, epoch - 1)
@@ -84,22 +104,25 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
 
         if epoch % cfg["check_epoch"] == 0:
 
-            all_positions: list = []
+            for I, u in test_loader:
 
-            for step in range(0, cfg["sequence_size"]-1):
+                all_positions: list = []
 
-                I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(I.permute(1, 0, 2, 3, 4)[
-                                                            step+1], I.permute(1, 0, 2, 3, 4)[step], u.permute(1, 0, 2)[step+1])
+                for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
-                all_positions.append(
-                    x_q_t.to("cpu").detach().numpy()[0].tolist())
+                    I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(I.permute(1, 0, 2, 3, 4)[
+                                                                step+1], I.permute(1, 0, 2, 3, 4)[step], u.permute(1, 0, 2)[step+1])
 
-                visualizer.append(
-                    I.permute(1, 0, 2, 3, 4)[step].to(
-                        "cpu").detach().numpy()[0].transpose(1, 2, 0),
-                    I_t.to("cpu").detach().to(torch.float32).numpy()[
-                        0].transpose(1, 2, 0),
-                    np.array(all_positions)
-                )
+                    all_positions.append(
+                        x_q_t.to("cpu").detach().numpy()[0].tolist())
 
-            visualizer.encode(save_video_path, f"{epoch}.mp4")
+                    visualizer.append(
+                        I.permute(1, 0, 2, 3, 4)[step].to(
+                            "cpu").detach().numpy()[0].transpose(1, 2, 0),
+                        I_t.to("cpu").detach().to(torch.float32).numpy()[
+                            0].transpose(1, 2, 0),
+                        np.array(all_positions)
+                    )
+
+                visualizer.encode(save_video_path, f"{epoch}.mp4")
+                print()

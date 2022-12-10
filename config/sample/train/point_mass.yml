@@ -1,7 +1,5 @@
 batch_size: &batch_size 8
-episode_size: 1000
 epoch_size: 600 
-sequence_size: &sequence_size 100
 check_epoch: 10
 load_model: False
 load_model_path: results/2022_11_27_23_29_53/weights
@@ -33,6 +31,8 @@ model:
   velocity_param:
     act_func_name: ReLU
     delta_time: *delta_time
+    device: *device
+    use_data_efficiency: False
 
   optimizer: Adam
   optimizer_params:
@@ -54,31 +54,31 @@ dataset:
       action_size: 2
       device: *device
 
-    train_loader:
+    loader:
       batch_size: *batch_size
       shuffle: True
       drop_last: False
 
   validation:
-    episode_size: &test_episode_size 100
-    sequence_size: &test_sequence_size 100
+    episode_size: &validation_episode_size 100
+    sequence_size: &validation_sequence_size 100
     data:
       path: *path
       filename: validation.npz
 
     memory:
-      episode_size: *test_episode_size
-      sequence_size: *test_sequence_size
+      episode_size: *validation_episode_size
+      sequence_size: *validation_sequence_size
       action_size: 2
       device: *device
 
-    validation_loader:
+    loader:
       batch_size: 1
       shuffle: False
       drop_last: False
 
   test:
-    episode_size: &test_episode_size 100
+    episode_size: &test_episode_size 1
     sequence_size: &test_sequence_size 100
     data:
       path: *path
@@ -90,7 +90,7 @@ dataset:
       action_size: 2
       device: *device
 
-    test_loader:
+    loader:
       batch_size: 1
       shuffle: False
       drop_last: False

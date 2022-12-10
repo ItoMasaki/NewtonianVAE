@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.10
+import pprint
 import argparse
 import yaml
 import numpy as np
@@ -11,12 +12,13 @@ from environments import load
 
 def main():
     parser = argparse.ArgumentParser(description='Collection dataset')
-    parser.add_argument('--config', type=str,
+    parser.add_argument('--config', type=str, default="config/sample/collect_dataset/point_mass.yml",
                         help='config path e.g. config/sample/collect_dataset/point_mass.yml')
     args = parser.parse_args()
 
     with open(args.config) as _file:
         config = yaml.safe_load(_file)
+        pprint.pprint(config)
 
     env = load(**config["environment"])
 

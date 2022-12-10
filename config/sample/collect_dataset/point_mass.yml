@@ -3,7 +3,7 @@ device: &device cpu
 
 
 environment:
-  domain_name: point_mass
+  domain_name: point_mass_nvae
   task_name: easy
 
 

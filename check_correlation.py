@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import pprint
 import argparse
 import colorsys
 import numpy as np
@@ -23,6 +24,7 @@ def main():
 
     with open(args.config) as file:
         cfg = yaml.safe_load(file)
+        pprint.pprint(cfg)
 
     # ================#
     # Define model   #
