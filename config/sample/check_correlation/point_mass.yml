@@ -1,14 +1,31 @@
-env: point_mass
-episodes: 100
+load_path: &save_path datasets/sample/point_mass_100
 device: &device cuda:0
-weight_path: results/2022_11_28_17_43_07/weights
-weight_filename: 300.weight
 
-batch_size: &batch_size 5
-episode_size: 1000
-epoch_size: 300 
-sequence_size: &sequence_size 100
-check_epoch: 20
+
+weight:
+  path: results/2022_12_07_03_56_04/weights
+  filename: 300.weight
+
+
+dataset:
+  test:
+    episode_size: &episode_size 100
+    sequence_size: &sequence_size 100
+    data:
+      path: *save_path
+      filename: test.npz
+
+    memory:
+      episode_size: *episode_size
+      sequence_size: *sequence_size
+      action_size: 2
+      device: *device
+
+    test_loader:
+      batch_size: 1
+      shuffle: False
+      drop_last: False
+
 
 model:
   delta_time: &delta_time 0.5

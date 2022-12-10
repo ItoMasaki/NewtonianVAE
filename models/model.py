@@ -23,7 +23,7 @@ class NewtonianVAE(Model):
                  optimizer_params: dict = {},
                  clip_grad_norm: bool = False,
                  clip_grad_value: bool = False,
-                 delta_time: float = 0.1,
+                 delta_time: float = 0.5,
                  device: str = "cuda",
                  use_amp: bool = False):
 
@@ -52,15 +52,15 @@ class NewtonianVAE(Model):
             [self.encoder, self.decoder, self.transition, self.velocity])
 
         # -------------------------#
-        # set params and optim    #
+        # Set params and optim     #
         # -------------------------#
         params = self.distributions.parameters()
         self.optimizer = getattr(optim, optimizer)(params, **optimizer_params)
 
-        # -------------------------#
-        # set for AMP             #
-        # -------------------------#
-        # Whather to use Automatic Mixture Precision [AMP]
+        # -------------------------------------------------#
+        # Set for AMP                                      #
+        # Whather to use Automatic Mixture Precision [AMP] #
+        # -------------------------------------------------#
         self.use_amp = use_amp
         self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
@@ -93,7 +93,7 @@ class NewtonianVAE(Model):
             # v_{t+1} = v_{t} + dt (A*x_{t} + B*v_{t} + C*u_{t})
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
-            # KL[p(x^p_{t+1} | x^q_t, u_t; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_t, u_t; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
+            # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
             step_loss, variables = self.step_loss(
                 {'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
 
@@ -167,10 +167,7 @@ class NewtonianVAE(Model):
         return I_t, I_tp1, x_q_t, x_p_tp1
 
     def save(self, path, filename):
-        try:
-            os.makedirs(path)
-        except FileExistsError:
-            pass
+        os.makedirs(path, exist_ok=True)
 
         torch.save({
             'distributions': self.distributions.to("cpu").state_dict(),
@@ -178,9 +175,28 @@ class NewtonianVAE(Model):
 
         self.distributions.to(self.device)
 
+    def save_ckpt(self, path, filename, epoch, loss):
+        os.makedirs(path, exist_ok=True)
+
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': self.distributions.to("cpu").state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'loss': loss,
+        }, f"{path}/{filename}")
+
+        self.distributions.to(self.device)
+
     def load(self, path, filename):
         self.distributions.load_state_dict(torch.load(
             f"{path}/{filename}", map_location=torch.device('cpu'))['distributions'])
+
+    def load_ckpt(self, path, filename):
+        self.distributions.load_state_dict(torch.load(
+            f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['model_state_dict'])
+
+        self.optimizer.load_state_dict(torch.load(
+            f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['optimizer_state_dict'])
 
     def init_params(self):
 

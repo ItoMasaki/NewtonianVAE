@@ -1,6 +1,6 @@
-batch_size: &batch_size 1
+batch_size: &batch_size 8
 episode_size: 1000
-epoch_size: 300 
+epoch_size: 600 
 sequence_size: &sequence_size 100
 check_epoch: 10
 load_model: False
@@ -14,7 +14,7 @@ model:
   clip_grad_norm: False
   clip_grad_value: False
   device: *device
-  use_amp: True
+  use_amp: False
 
   encoder_param:
     input_dim: 3
@@ -39,29 +39,58 @@ model:
     lr: 0.0003
 
 
-train:
-  batch_size: *batch_size
-  sequence_size: *sequence_size
-  action_size: 2
-  path: "datasets/sample/point_mass/train.npz"
-  device: *device
+dataset:
+  path: &path datasets/sample/point_mass_100
+  train:
+    episode_size: &train_episode_size 1000
+    sequence_size: &trin_sequence_size 100
+    data:
+      path: *path
+      filename: train.npz
 
+    memory:
+      episode_size: *train_episode_size
+      sequence_size: *trin_sequence_size
+      action_size: 2
+      device: *device
 
-test:
-  batch_size: 1
-  sequence_size: *sequence_size
-  action_size: 2
-  path: "datasets/sample/point_mass/test.npz"
-  device: *device
+    train_loader:
+      batch_size: *batch_size
+      shuffle: True
+      drop_last: False
 
+  validation:
+    episode_size: &test_episode_size 100
+    sequence_size: &test_sequence_size 100
+    data:
+      path: *path
+      filename: validation.npz
 
-train_loader:
-  batch_size: *batch_size
-  shuffle: True
-  drop_last: True
+    memory:
+      episode_size: *test_episode_size
+      sequence_size: *test_sequence_size
+      action_size: 2
+      device: *device
 
+    validation_loader:
+      batch_size: 1
+      shuffle: False
+      drop_last: False
 
-test_loader:
-  batch_size: 1
-  shuffle: False
-  drop_last: True
+  test:
+    episode_size: &test_episode_size 100
+    sequence_size: &test_sequence_size 100
+    data:
+      path: *path
+      filename: test.npz
+
+    memory:
+      episode_size: *test_episode_size
+      sequence_size: *test_sequence_size
+      action_size: 2
+      device: *device
+
+    test_loader:
+      batch_size: 1
+      shuffle: False
+      drop_last: False
