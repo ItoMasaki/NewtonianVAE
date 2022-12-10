@@ -1,0 +1,40 @@
+env: point_mass
+episodes: 100
+device: &device cuda:0
+weight_path: results/2022_11_27_23_29_53/weights
+weight_filename: 300.weight
+
+batch_size: &batch_size 5
+episode_size: 1000
+epoch_size: 300 
+sequence_size: &sequence_size 100
+check_epoch: 20
+
+model:
+  delta_time: &delta_time 0.5
+  clip_grad_norm: False
+  clip_grad_value: False
+  device: *device
+  use_amp: True
+
+  encoder_param:
+    input_dim: 3
+    output_dim: 2
+    act_func_name: ReLU
+
+  decoder_param:
+    input_dim: 2
+    output_dim: 3
+    act_func_name: LeakyReLU
+    device: *device
+
+  transition_param:
+    delta_time: *delta_time
+
+  velocity_param:
+    act_func_name: ReLU
+    delta_time: *delta_time
+
+  optimizer: Adam
+  optimizer_params:
+    lr: 0.0003

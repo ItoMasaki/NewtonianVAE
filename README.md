@@ -11,7 +11,7 @@ Below command can collect dataset.
 ### Train model
 Below command can train the NewtonianVAE model
 ```bash
-./train
+./train --config config/sample/train/point_mass.yml
 ```
 
 ## Dependencies

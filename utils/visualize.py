@@ -43,22 +43,19 @@ class Visualization:
 
     self.frames: list = []
 
-  def append(self, I_t, rec_I_t, rec_I_tp1, points):
+  def append(self, I_t, rec_I_t, points):
 
     self.ax1.set_title(r"$ I_t $")
     self.ax1.axis('off')
     self.ax2.set_title(r"$ \hat{I}_t $")
     self.ax2.axis('off')
-    self.ax3.set_title(r"$ \hat{I}_{t+1} $")
-    self.ax3.axis('off')
     self.ax4.set_title(r"$ trajectory $")
 
     art_1 = self.ax1.imshow(I_t)
     art_2 = self.ax2.imshow(rec_I_t)
-    art_3 = self.ax3.imshow(rec_I_tp1)
     art_4 = self.ax4.scatter(points[:, 0], points[:, 1], s=1., c=cmap(np.arange(0, len(points))/100))
     
-    self.frames.append([art_1, art_2, art_3, art_4])
+    self.frames.append([art_1, art_2, art_4])
 
   def encode(self, save_path, file_name):
     try:
