@@ -24,7 +24,7 @@ def main():
 
     with open(args.config) as file:
         cfg = yaml.safe_load(file)
-        pprint(cfg)
+        pprint.pprint(cfg)
 
     # ================#
     # Define model   #

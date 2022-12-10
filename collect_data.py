@@ -18,7 +18,7 @@ def main():
 
     with open(args.config) as _file:
         config = yaml.safe_load(_file)
-        pprint(config)
+        pprint.pprint(config)
 
     env = load(**config["environment"])
 
