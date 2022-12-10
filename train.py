@@ -60,12 +60,14 @@ visualizer = visualize.Visualization()
 
 writer = SummaryWriter(comment="NewtonianVAE")
 
+#==============#
+# Define model #
+#==============#
 model = NewtonianVAE(**cfg["model"])
 # model.init_params()
 
 if cfg["load_model"]:
     model.load(cfg["load_model_path"], cfg["load_model_file"])
-
 
 test_loss: float = 0.
 best_loss: float = 1e32
