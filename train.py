@@ -89,8 +89,7 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
             train_loss += model.train(
                 {"I": I.permute(1, 0, 2, 3, 4), "u": u.permute(1, 0, 2), "beta": beta})
 
-        writer.add_scalar('train_loss', train_loss /
-                          cfg["dataset"]["train"]["episode_size"], epoch - 1)
+        writer.add_scalar('train_loss', train_loss/idx, epoch - 1)
 
         #==================#
         # Validation phase #
@@ -99,8 +98,7 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
             validation_loss += model.test(
                 {"I": I.permute(1, 0, 2, 3, 4), "u": u.permute(1, 0, 2), "beta": beta})
 
-        writer.add_scalar('validation_loss', validation_loss /
-                          cfg["dataset"]["validation"]["episode_size"], epoch - 1)
+        writer.add_scalar('validation_loss', validation_loss/idx, epoch - 1)
 
         #============#
         # Test phase #
@@ -109,8 +107,7 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
             test_loss += model.test(
                 {"I": I.permute(1, 0, 2, 3, 4), "u": u.permute(1, 0, 2), "beta": beta})
 
-        writer.add_scalar('test_loss', test_loss /
-                          cfg["dataset"]["test"]["episode_size"], epoch - 1)
+        writer.add_scalar('test_loss', test_loss/idx, epoch - 1)
 
         pbar.set_postfix({"validation": validation_loss/cfg["dataset"]["validation"]["episode_size"],
                           "train": train_loss/cfg["dataset"]["train"]["episode_size"],
