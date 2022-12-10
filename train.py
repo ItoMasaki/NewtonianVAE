@@ -43,7 +43,6 @@ if cfg["load_model"]:
 
 test_loss: float = 0.
 best_loss: float = 1e32
-beta: float = 0.001
 
 with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
 
