@@ -167,15 +167,15 @@ class Velocity(dist.Deterministic):
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
-        _input = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)
+        combined_vector = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)
 
         # For data efficiency
         if self.use_data_efficiency:
             A, B, C = torch.zeros((_input.shape[0], 2, 2)).to(self.device), torch.zeros((_input.shape[0], 2, 2)).to(self.device), torch.diag_embed(torch.ones(_input.shape[0], 2)).to(self.device)
         else:
-            A = torch.diag_embed(self.coefficient_A(_input))
-            B = torch.diag_embed(self.coefficient_B(_input))
-            C = torch.diag_embed(self.coefficient_C(_input))
+            A = torch.diag_embed(self.coefficient_A(combined_vector))
+            B = -touch.exp(torch.diag_embed(self.coefficient_B(combined_vector)))
+            C = torch.exp(torch.diag_embed(self.coefficient_C(combined_vector)))
 
         # Dynamics inspired by Newton's motion equation
         v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum(
