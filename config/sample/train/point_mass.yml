@@ -1,5 +1,5 @@
 batch_size: &batch_size 8
-epoch_size: 600 
+epoch_size: 1600 
 check_epoch: 10
 load_model: False
 load_model_path: results/2022_11_27_23_29_53/weights
@@ -12,7 +12,7 @@ model:
   clip_grad_norm: False
   clip_grad_value: False
   device: *device
-  use_amp: False
+  use_amp: True
 
   encoder_param:
     input_dim: 3
@@ -29,10 +29,11 @@ model:
     delta_time: *delta_time
 
   velocity_param:
+    batch_size: *batch_size
     act_func_name: ReLU
     delta_time: *delta_time
     device: *device
-    use_data_efficiency: False
+    use_data_efficiency: True
 
   optimizer: Adam
   optimizer_params:
@@ -40,7 +41,7 @@ model:
 
 
 dataset:
-  path: &path datasets/sample/point_mass_100
+  path: &path datasets/sample/point_mass_line
   train:
     episode_size: &train_episode_size 1000
     sequence_size: &trin_sequence_size 100
@@ -73,7 +74,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: 1
+      batch_size: *batch_size
       shuffle: False
       drop_last: False
 

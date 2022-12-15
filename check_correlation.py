@@ -34,15 +34,6 @@ def main():
     model = NewtonianVAE(**cfg["model"])
     model.load(**cfg["weight"])
 
-    # ================#
-    # Define dataset #
-    # ================#
-    load_memory = memory.ExperienceReplay(
-        **cfg["dataset"]["test"]["memory"])
-    load_memory.load(**cfg["dataset"]["test"]["data"])
-    test_loader = DataLoader(
-        load_memory, **cfg["dataset"]["test"]["test_loader"])
-
     observation_position = []
     latent_position = []
 
@@ -72,7 +63,7 @@ def main():
 
     for idx in range(len(all_latent_position)):
         color = list(colorsys.hsv_to_rgb(
-            all_observation_position[idx, 0]/2., all_observation_position[idx, 1], 0.5))
+            0.33*all_observation_position[idx, 0]/2., 0.33*all_observation_position[idx, 1], 0.5))
         color[2] = 0.
         plt.scatter(all_latent_position[idx, 0],
                     all_latent_position[idx, 1], color=color, s=2)

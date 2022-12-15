@@ -125,7 +125,7 @@ class Velocity(dist.Deterministic):
       with  [A, log(−B), log C] = diag(f(x_{t-1}, v_{t-1}, u_{t-1}))
     """
 
-    def __init__(self, delta_time: float, act_func_name: str, device: str, use_data_efficiency: bool):
+    def __init__(self, batch_size: int, delta_time: float, act_func_name: str, device: str, use_data_efficiency: bool):
         super().__init__(var=["v_t"], cond_var=[
             "x_tn1", "v_tn1", "u_tn1"], name="f")
 
@@ -165,13 +165,20 @@ class Velocity(dist.Deterministic):
                 nn.Linear(2, 2),
             )
 
+        else:
+            self.A = torch.zeros((batch_size, 2, 2)).to(self.device)
+            self.B = torch.zeros((batch_size, 2, 2)).to(self.device)
+            self.C = torch.diag_embed(torch.ones(batch_size, 2)).to(self.device)
+
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
         combined_vector = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)
 
         # For data efficiency
         if self.use_data_efficiency:
-            A, B, C = torch.zeros((_input.shape[0], 2, 2)).to(self.device), torch.zeros((_input.shape[0], 2, 2)).to(self.device), torch.diag_embed(torch.ones(_input.shape[0], 2)).to(self.device)
+            A = self.A
+            B = self.B
+            C = self.C
         else:
             A = torch.diag_embed(self.coefficient_A(combined_vector))
             B = -touch.exp(torch.diag_embed(self.coefficient_B(combined_vector)))

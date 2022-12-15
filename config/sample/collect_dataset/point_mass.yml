@@ -1,4 +1,4 @@
-save_path: &save_path datasets/sample/point_mass_100
+save_path: &save_path datasets/sample/point_mass_line
 device: &device cpu
 
 

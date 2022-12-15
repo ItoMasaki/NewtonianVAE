@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.10
+#!/usr/bin/env python3
 import pprint
 import argparse
 import yaml
@@ -45,16 +45,16 @@ def main():
             actions = []
             positions = []
             action = 0.
+            action += np.random.uniform(-1., 1., 2)
+            action = np.clip(action, -1., 1.)
 
             for _ in range(sequence_size):
-                action += np.random.uniform(-.1, .1, 2)
-                action = np.clip(action, -1., 1.)
 
                 time_step = env.step(action)
                 video = env.physics.render(64, 64, camera_id=0)
 
                 images.append(video.transpose(2, 0, 1)[
-                    np.newaxis, :, :, :]/255.0)
+                    np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
                 positions.append(
                     time_step.observation["position"][np.newaxis, :])
