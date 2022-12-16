@@ -6,6 +6,7 @@ from torch import optim
 from torch.nn import functional as F
 
 from pixyz import distributions as dist
+from pixyz.utils import epsilon
 
 
 class Encoder(dist.Normal):
@@ -46,7 +47,7 @@ class Encoder(dist.Normal):
         loc = self.loc(feature)
         scale = self.scale(feature)
 
-        return {"loc": loc, "scale": scale}
+        return {"loc": loc, "scale": scale + epsilon()}
 
 
 class Decoder(dist.Normal):
