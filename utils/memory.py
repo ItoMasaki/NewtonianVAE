@@ -24,10 +24,10 @@ class ExperienceReplay():
         return len(self.actions)
 
     def __getitem__(self, index):
-        colors = torch.from_numpy(self.colors[index]).to(self.device)
+        colors = self.colors[index]
         actions = torch.from_numpy(self.actions[index]).to(self.device)
 
-        return _images_to_observation(colors, self.bit_depth), actions
+        return _images_to_observation(colors, self.bit_depth).to(self.device), actions
 
     def append(self, color, action, batch):
         self.colors[batch] = color

@@ -6,6 +6,7 @@ load_model: False
 load_model_path: results/2022_11_27_23_29_53/weights
 load_model_file: 300.weight
 device: &device cuda:0
+use_data_efficiency: &use_data_efficiency True
 
 
 model:
@@ -14,7 +15,6 @@ model:
   clip_grad_value: False
   device: *device
   use_amp: True
-  use_data_efficiency: &use_data_efficiency True
 
   encoder_param:
     input_dim: 3
