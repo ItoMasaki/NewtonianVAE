@@ -58,7 +58,7 @@ def main():
 
                 observation, reward, done = env.step(torch.from_numpy(action))
 
-                images.append(observation[
+                images.append(observation.permute(2, 0, 1)[
                     np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
 
