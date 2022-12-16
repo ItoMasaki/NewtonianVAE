@@ -43,6 +43,7 @@ class Visualization:
         self.ax4 = ax4
 
         self.frames: list = []
+        self.reconstruction_images = []
 
     def append(self, I_t, rec_I_t, points):
 
@@ -59,6 +60,8 @@ class Visualization:
 
         self.frames.append([art_1, art_2, art_4])
 
+        self.reconstruction_images.append(rec_I_t)
+
     def encode(self, save_path, file_name):
         try:
             os.makedirs(save_path)
@@ -70,5 +73,5 @@ class Visualization:
         plt.cla()
         self.frames = []
 
-    def add_images(self, writer):
-        print(self.frames[:][1])
+    def add_images(self, writer, epoch):
+        writer.add_images("reconstruction_images", np.stack(self.reconstruction_images), epoch, dataformats="NHWC")

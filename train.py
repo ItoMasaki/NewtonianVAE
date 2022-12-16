@@ -136,7 +136,7 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
         #==============#
         # Encode video #
         #==============#
-        if epoch % cfg["check_epoch"] == 0:
+        if epoch % cfg["check_epoch"] == 1:
 
             all_positions: list = []
 
@@ -157,5 +157,5 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
                 )
 
             visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
-            visualizer.add_images(writer)
+            visualizer.add_images(writer, epoch)
             print()
