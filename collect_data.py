@@ -3,11 +3,12 @@ import pprint
 import argparse
 import yaml
 import numpy as np
+import torch
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from utils import memory
-from environments import load
+from environments import load, ControlSuiteEnv
 
 
 def main():
@@ -20,7 +21,8 @@ def main():
         config = yaml.safe_load(_file)
         pprint.pprint(config)
 
-    env = load(**config["environment"])
+    # env = load(**config["environment"])
+    env = ControlSuiteEnv(**config["environment"])
 
     for mode in config["dataset"].keys():
         episode_size = config["dataset"][mode]["episode_size"]
@@ -47,23 +49,21 @@ def main():
             action = 0.
 
             for _ in range(sequence_size):
+                # env.render()
                 action += np.random.uniform(-0.05, 0.05, 2)
                 action = np.clip(action, -1., 1.)
 
                 if np.any(np.abs(action) >= 1.):
                     print("Warn : Over 1.")
 
-                time_step = env.step(action)
-                video = env.physics.render(64, 64, camera_id=0)
+                observation, reward, done = env.step(torch.from_numpy(action))
 
-                images.append(video.transpose(2, 0, 1)[
+                images.append(observation[
                     np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
-                positions.append(
-                    time_step.observation["position"][np.newaxis, :])
 
             save_memory.append(np.concatenate(images),
-                               np.concatenate(actions), np.concatenate(positions), episode)
+                               np.concatenate(actions), episode)
 
         print()
         save_memory.save(save_path, save_filename)

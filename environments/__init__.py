@@ -18,6 +18,7 @@
 import collections
 import inspect
 import itertools
+import cv2
 
 from dm_control.rl import control
 
@@ -43,6 +44,8 @@ from dm_control.suite import walker
 
 from environments import reacher_nvae
 from environments import point_mass_nvae
+
+from utils.env import preprocess_observation_, postprocess_observation, _images_to_observation
 
 # Find all domains imported.
 _DOMAINS = {name: module for name, module in locals().items()
@@ -145,3 +148,51 @@ def build_environment(domain_name, task_name, task_kwargs=None,
   env = domain.SUITE[task_name](**task_kwargs)
   env.task.visualize_reward = visualize_reward
   return env
+
+
+class ControlSuiteEnv():
+  def __init__(self, domain_name, task_name, max_episode_length, bit_depth):
+
+    self._env = load(domain_name, task_name)
+    self.max_episode_length = max_episode_length
+    self.bit_depth = bit_depth
+
+  def reset(self):
+    self.t = 0  # Reset internal timer
+    state = self._env.reset()
+    return _images_to_observation(self._env.physics.render(camera_id=0), self.bit_depth)
+
+  def step(self, action):
+    action = action.detach().numpy()
+    reward = 0
+
+    state = self._env.step(action)
+    reward += state.reward
+    self.t += 1  # Increment internal timer
+    done = state.last() or self.t == self.max_episode_length
+
+    observation = _images_to_observation(
+        self._env.physics.render(camera_id=0), self.bit_depth)
+
+    return observation, reward, done
+
+  def render(self):
+    cv2.imshow('screen', self._env.physics.render(camera_id=0)[:, :, ::-1])
+    cv2.waitKey(1)
+
+  def close(self):
+    cv2.destroyAllWindows()
+    self._env.close()
+
+  @property
+  def observation_size(self):
+    return sum([(1 if len(obs.shape) == 0 else obs.shape[0]) for obs in self._env.observation_spec().values()]) if self.symbolic else (3, 64, 64)
+
+  @property
+  def action_size(self):
+    return self._env.action_spec().shape[0]
+
+  # Sample an action randomly from a uniform distribution over all valid actions
+  def sample_random_action(self):
+    spec = self._env.action_spec()
+    return torch.from_numpy(np.random.uniform(spec.minimum, spec.maximum, spec.shape))
