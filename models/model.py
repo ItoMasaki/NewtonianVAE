@@ -78,11 +78,12 @@ class NewtonianVAE(Model):
         total_loss = 0.
 
         T, B, C = u.shape
+        
+        # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
+        x_q_tn1 = self.encoder.sample(
+            {"I_t": I[0]}, reparam=True)["x_t"]
 
         for step in range(1, T-1):
-            # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-            x_q_tn1 = self.encoder.sample(
-                {"I_t": I[step-1]}, reparam=True)["x_t"]
 
             # x^q_{t} ~ p(x^q_{t} | I_{t})
             x_q_t = self.encoder.sample({"I_t": I[step]}, reparam=True)["x_t"]
@@ -99,24 +100,27 @@ class NewtonianVAE(Model):
 
             total_loss += step_loss
 
+            x_q_tn1 = x_q_t
+
         return total_loss/T
 
     def train(self, train_x_dict={}):
 
         self.distributions.train()
 
-        self.optimizer.zero_grad(set_to_none=True)
-
         with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
             loss = self.calculate_loss(train_x_dict)
+
+        # self.optimizer.zero_grad(set_to_none=True)
+        self.optimizer.zero_grad()
 
         # backward
         self.scaler.scale(loss).backward()
 
-        if self.clip_norm:
-            clip_grad_norm_(self.distributions.parameters(), self.clip_norm)
-        if self.clip_value:
-            clip_grad_value_(self.distributions.parameters(), self.clip_value)
+        # if self.clip_norm:
+        #     clip_grad_norm_(self.distributions.parameters(), self.clip_norm)
+        # if self.clip_value:
+        #     clip_grad_value_(self.distributions.parameters(), self.clip_value)
 
         # update params
         self.scaler.step(self.optimizer)

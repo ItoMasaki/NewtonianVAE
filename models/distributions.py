@@ -19,26 +19,22 @@ class Encoder(dist.Normal):
         activation_func = getattr(nn, act_func_name)
 
         self.encoder = nn.Sequential(
-            nn.Conv2d(in_channels=input_dim, out_channels=64,
-                      kernel_size=4, stride=2),
+            nn.Conv2d(3, 32, 4, stride=2),
             activation_func(),
-            nn.Conv2d(in_channels=64, out_channels=64,
-                      kernel_size=4, stride=2),
+            nn.Conv2d(32, 64, 4, stride=2),
             activation_func(),
-            nn.Conv2d(in_channels=64, out_channels=64,
-                      kernel_size=4, stride=2),
+            nn.Conv2d(64, 128, 4, stride=2),
             activation_func(),
-            nn.Conv2d(in_channels=64, out_channels=64,
-                      kernel_size=4, stride=2),
+            nn.Conv2d(128, 256, 4, stride=2),
             activation_func(),
         )
 
         self.loc = nn.Sequential(
-            nn.Linear(256, output_dim),
+            nn.Linear(1024, output_dim),
         )
 
         self.scale = nn.Sequential(
-            nn.Linear(256, output_dim),
+            nn.Linear(1024, output_dim),
             nn.Softplus()
         )
 
@@ -73,7 +69,6 @@ class Decoder(dist.Normal):
             nn.Conv2d(64, 64, 3, stride=1, padding=1),
             activation_func(),
             nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
-            nn.Sigmoid(),
         )
 
         self.image_size = 64
@@ -135,34 +130,15 @@ class Velocity(dist.Deterministic):
         self.use_data_efficiency = use_data_efficiency
 
         if not self.use_data_efficiency:
-            self.coefficient_A = nn.Sequential(
-                nn.Linear(2*3, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-            )
 
-            self.coefficient_B = nn.Sequential(
+            self.coefficient_ABC = nn.Sequential(
                 nn.Linear(2*3, 2),
                 activation_func(),
                 nn.Linear(2, 2),
                 activation_func(),
                 nn.Linear(2, 2),
                 activation_func(),
-                nn.Linear(2, 2),
-            )
-
-            self.coefficient_C = nn.Sequential(
-                nn.Linear(2*3, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 2),
+                nn.Linear(2, 6),
             )
 
         else:
@@ -180,9 +156,10 @@ class Velocity(dist.Deterministic):
             B = self.B
             C = self.C
         else:
-            A = torch.diag_embed(self.coefficient_A(combined_vector))
-            B = -touch.exp(torch.diag_embed(self.coefficient_B(combined_vector)))
-            C = torch.exp(torch.diag_embed(self.coefficient_C(combined_vector)))
+            _A, _B, _C = torch.chunk(self.coefficient_ABC(combined_vector), 3, dim=-1)
+            A = torch.diag_embed(_A)
+            B = -touch.exp(torch.diag_embed(_B))
+            C = torch.exp(torch.diag_embed(_C))
 
         # Dynamics inspired by Newton's motion equation
         v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum(

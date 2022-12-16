@@ -45,10 +45,13 @@ def main():
             actions = []
             positions = []
             action = 0.
-            action += np.random.uniform(-1., 1., 2)
-            action = np.clip(action, -1., 1.)
 
             for _ in range(sequence_size):
+                action += np.random.uniform(-0.05, 0.05, 2)
+                action = np.clip(action, -1., 1.)
+
+                if np.any(np.abs(action) >= 1.):
+                    print("Warn : Over 1.")
 
                 time_step = env.step(action)
                 video = env.physics.render(64, 64, camera_id=0)

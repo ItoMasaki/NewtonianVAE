@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from env import preprocess_observation_
+from utils.env import _images_to_observation
 
 
 class ExperienceReplay():
@@ -30,10 +30,10 @@ class ExperienceReplay():
         actions = torch.from_numpy(self.actions[index]).to(self.device)
         positions = torch.from_numpy(self.positions[index]).to(self.device)
 
-        return colors, actions#, positions
+        return _images_to_observation(colors, self.bit_depth), actions#, positions
 
     def append(self, color, action, position, batch):
-        self.colors[batch] = preprocess_observation_(color, self.bit_depth)
+        self.colors[batch] = color
         self.actions[batch] = action
         self.positions[batch] = position
 

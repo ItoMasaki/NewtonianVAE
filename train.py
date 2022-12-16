@@ -12,7 +12,7 @@ import shutil
 import yaml
 
 from models import NewtonianVAE
-from utils import visualize, memory
+from utils import visualize, memory, env
 
 
 parser = argparse.ArgumentParser(description='Collection dataset')
@@ -120,15 +120,15 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
         # Save model #
         #============#
         model.save(f"{save_weight_path}", f"{epoch}.weight")
-        model.save_ckpt(f"{save_weight_path}",
-                        f"train.ckpt", epoch, validation_loss)
+        # model.save_ckpt(f"{save_weight_path}",
+        #                 f"train.ckpt", epoch, validation_loss)
 
         #=================#
         # Save best model #
         #=================#
-        if validation_loss < best_loss:
-            model.save(f"{save_weight_path}", f"best.weight")
-            best_loss = validation_loss
+        # if validation_loss < best_loss:
+        #     model.save(f"{save_weight_path}", f"best.weight")
+        #     best_loss = validation_loss
 
         if 30 <= epoch and epoch < 60:
             beta += 0.0333
@@ -149,10 +149,10 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
                     x_q_t.to("cpu").detach().numpy()[0].tolist())
 
                 visualizer.append(
-                    I.permute(1, 0, 2, 3, 4)[step].to(
-                        "cpu").detach().numpy()[0].transpose(1, 2, 0),
-                    I_t.to("cpu").detach().to(torch.float32).numpy()[
-                        0].transpose(1, 2, 0),
+                    env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
+                        "cpu").detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
+                    env.postprocess_observation(I_t.to("cpu").detach().to(torch.float32).numpy()[
+                        0].transpose(1, 2, 0), cfg["bit_depth"]),
                     np.array(all_positions)
                 )
 

@@ -18,6 +18,7 @@ dataset:
       episode_size: *train_episode_size
       sequence_size: *train_sequence_size
       action_size: 2
+      bit_depth: 8
       device: *device
   
   
@@ -31,6 +32,7 @@ dataset:
       episode_size: *validation_episode_size
       sequence_size: *validation_sequence_size
       action_size: 2
+      bit_depth: 8
       device: *device
   
   
@@ -44,4 +46,5 @@ dataset:
       episode_size: *test_episode_size
       sequence_size: *test_sequence_size
       action_size: 2
+      bit_depth: 8
       device: *device
