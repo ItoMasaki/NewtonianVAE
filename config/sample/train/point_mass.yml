@@ -14,7 +14,7 @@ model:
   clip_grad_norm: False
   clip_grad_value: False
   device: *device
-  use_amp: True
+  use_amp: False
 
   encoder_param:
     input_dim: 3

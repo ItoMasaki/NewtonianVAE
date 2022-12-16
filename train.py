@@ -157,4 +157,5 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
                 )
 
             visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
+            visualizer.add_images(writer)
             print()
