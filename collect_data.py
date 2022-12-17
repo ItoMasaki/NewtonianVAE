@@ -21,7 +21,6 @@ def main():
         config = yaml.safe_load(_file)
         pprint.pprint(config)
 
-    # env = load(**config["environment"])
     env = ControlSuiteEnv(**config["environment"])
 
     for mode in config["dataset"].keys():

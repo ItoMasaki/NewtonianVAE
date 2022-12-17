@@ -92,7 +92,7 @@ def main():
             #==================#
             # Validation phase #
             #==================#
-            train_loss = data_loop(epoch, validation_loader, model, cfg["device"], beta, train_mode=False)
+            validation_loss = data_loop(epoch, validation_loader, model, cfg["device"], beta, train_mode=False)
             writer.add_scalar('validation_loss', validation_loss, epoch - 1)
 
             #============#
