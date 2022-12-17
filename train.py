@@ -51,10 +51,10 @@ test_replay.load(**cfg["dataset"]["test"]["data"])
 # Define data loader #
 #====================#
 train_loader = DataLoader(
-    train_replay, **cfg["dataset"]["train"]["loader"])
+    train_replay, **cfg["dataset"]["train"]["loader"], **kwargs)
 validation_loader = DataLoader(
-    test_replay, **cfg["dataset"]["validation"]["loader"])
-test_loader = DataLoader(test_replay, **cfg["dataset"]["test"]["loader"])
+    test_replay, **cfg["dataset"]["validation"]["loader"], **kwargs)
+test_loader = DataLoader(test_replay, **cfg["dataset"]["test"]["loader"], **kwargs)
 
 visualizer = visualize.Visualization()
 
@@ -126,9 +126,9 @@ with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
         #=================#
         # Save best model #
         #=================#
-        # if validation_loss < best_loss:
-        #     model.save(f"{save_weight_path}", f"best.weight")
-        #     best_loss = validation_loss
+        if validation_loss < best_loss:
+            model.save(f"{save_weight_path}", f"best.weight")
+            best_loss = validation_loss
 
         if 30 <= epoch and epoch < 60:
             beta += 0.0333

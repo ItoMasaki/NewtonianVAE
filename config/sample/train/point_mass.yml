@@ -1,6 +1,6 @@
 batch_size: &batch_size 8
 epoch_size: 300 
-check_epoch: 10
+check_epoch: 20
 bit_depth: &bit_depth 8
 load_model: False
 load_model_path: results/2022_11_27_23_29_53/weights

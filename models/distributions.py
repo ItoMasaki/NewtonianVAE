@@ -2,7 +2,6 @@ import numpy as np
 
 import torch
 from torch import nn
-from torch import optim
 from torch.nn import functional as F
 
 from pixyz import distributions as dist
@@ -45,7 +44,7 @@ class Encoder(dist.Normal):
         feature = feature.reshape((B, C*W*H))
 
         loc = self.loc(feature)
-        scale = self.scale(feature)
+        scale = self.scale(feature) + epsilon()
 
         return {"loc": loc, "scale": scale}
 
@@ -59,10 +58,6 @@ class Decoder(dist.Normal):
         super().__init__(var=["I_t"], cond_var=["x_t"])
 
         activation_func = getattr(nn, act_func_name)
-
-        # self.up_size_vector = nn.Sequential(
-        #     nn.Linear(2, 10)
-        # )
 
         self.loc = nn.Sequential(
             nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),

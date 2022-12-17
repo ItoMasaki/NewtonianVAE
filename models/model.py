@@ -80,8 +80,7 @@ class NewtonianVAE(Model):
         T, B, C = u.shape
         
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-        x_q_tn1 = self.encoder.sample(
-            {"I_t": I[0]}, reparam=True)["x_t"]
+        x_q_tn1 = self.encoder.sample({"I_t": I[0]}, reparam=True)["x_t"]
 
         for step in range(1, T-1):
 
@@ -95,8 +94,7 @@ class NewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.step_loss(
-                {'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
+            step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
 
             total_loss += step_loss
 
@@ -117,10 +115,10 @@ class NewtonianVAE(Model):
         # backward
         self.scaler.scale(loss).backward()
 
-        # if self.clip_norm:
-        #     clip_grad_norm_(self.distributions.parameters(), self.clip_norm)
-        # if self.clip_value:
-        #     clip_grad_value_(self.distributions.parameters(), self.clip_value)
+        if self.clip_norm:
+            clip_grad_norm_(self.distributions.parameters(), self.clip_norm)
+        if self.clip_value:
+            clip_grad_value_(self.distributions.parameters(), self.clip_value)
 
         # update params
         self.scaler.step(self.optimizer)
@@ -201,21 +199,3 @@ class NewtonianVAE(Model):
 
         self.optimizer.load_state_dict(torch.load(
             f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['optimizer_state_dict'])
-
-    def init_params(self):
-
-        for m in self.distributions.modules():
-
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(
-                    m.weight, mode="fan_out", nonlinearity="relu")
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
-
-            elif isinstance(m, nn.BatchNorm2d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.constant_(m.bias, 0)

@@ -75,3 +75,4 @@ class Visualization:
 
     def add_images(self, writer, epoch):
         writer.add_images("reconstruction_images", np.stack(self.reconstruction_images), epoch, dataformats="NHWC")
+        self.reconstruction_images = []
