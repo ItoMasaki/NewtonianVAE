@@ -122,7 +122,7 @@ def main():
             #==============#
             # Encode video #
             #==============#
-            if epoch % cfg["check_epoch"] == 1:
+            if epoch % cfg["check_epoch"] == 0:
     
                 all_positions: list = []
     
