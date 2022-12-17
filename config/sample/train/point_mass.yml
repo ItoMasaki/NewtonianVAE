@@ -62,6 +62,8 @@ dataset:
       batch_size: *batch_size
       shuffle: True
       drop_last: False
+      num_workers: 8
+      pin_memory: True
 
   validation:
     episode_size: &validation_episode_size 100
@@ -81,6 +83,8 @@ dataset:
       batch_size: *batch_size
       shuffle: False
       drop_last: False
+      num_workers: 8
+      pin_memory: True
 
   test:
     episode_size: &test_episode_size 1
@@ -100,3 +104,5 @@ dataset:
       batch_size: 1
       shuffle: False
       drop_last: False
+      num_workers: 8
+      pin_memory: True

@@ -148,9 +148,9 @@ class Velocity(dist.Deterministic):
 
         # For data efficiency
         if self.use_data_efficiency:
-            A = self.A
-            B = self.B
-            C = self.C
+            A = self.A[:len(combined_vector)]
+            B = self.B[:len(combined_vector)]
+            C = self.C[:len(combined_vector)]
         else:
             _A, _B, _C = torch.chunk(self.coefficient_ABC(combined_vector), 3, dim=-1)
             A = torch.diag_embed(_A)

@@ -2,7 +2,7 @@ import os
 import numpy as np
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
 
 from utils.env import postprocess_observation, _images_to_observation
 
@@ -25,9 +25,9 @@ class ExperienceReplay():
 
     def __getitem__(self, index):
         colors = self.colors[index]
-        actions = torch.from_numpy(self.actions[index]).to(self.device)
+        actions = torch.from_numpy(self.actions[index])
 
-        return _images_to_observation(colors, self.bit_depth).to(self.device), actions
+        return _images_to_observation(colors, self.bit_depth), actions
 
     def append(self, color, action, batch):
         self.colors[batch] = postprocess_observation(color, self.bit_depth)
@@ -52,3 +52,21 @@ class ExperienceReplay():
         with np.load(f"{path}/{filename}", allow_pickle=True) as data:
             self.colors = data["colors"][0:self.episode_size]
             self.actions = data["actions"][0:self.episode_size]
+
+def make_loader(cfg, mode):
+    #==========================#
+    # Define experiment replay #
+    #==========================#
+    replay = ExperienceReplay(**cfg["dataset"][mode]["memory"])
+     
+    #==============#
+    # Load dataset #
+    #==============#
+    replay.load(**cfg["dataset"][mode]["data"])
+     
+    #====================#
+    # Define data loader #
+    #====================#
+    loader = DataLoader(replay, **cfg["dataset"][mode]["loader"])
+
+    return loader
