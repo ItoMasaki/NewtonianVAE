@@ -33,7 +33,7 @@ Below command can train the NewtonianVAE model
 ./check_operability.py
 ```
 
-![operability](docs/NewtonianVAE.mov)
+![operability](docs/NewtonianVAE_srcnn_anime_noise1.gif)
 
 ## Dependencies
 pixyz>=0.3.3  
