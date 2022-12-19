@@ -26,14 +26,14 @@ Below command can train the NewtonianVAE model
 ./check_correlation.py
 ```
 
-![correlation](https://github.com/ItoMasaki/NewtonianVAE/tree/materials/docs/correlation.png)
+![correlation](docs/correlation.png)
 
 ### 4. Check operability
 ```bash
 ./check_operability.py
 ```
 
-![operability](https://github.com/ItoMasaki/NewtonianVAE/tree/materials/docs/NewtonianVAE.mov)
+![operability](docs/NewtonianVAE.mov)
 
 ## Dependencies
 pixyz>=0.3.3  
