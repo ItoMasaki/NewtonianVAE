@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
 
 from models import NewtonianVAE
-from utils import memory
+from utils import memory, env
 from environments import load
 
 
@@ -19,14 +19,14 @@ def main():
     # ================#
     parser = argparse.ArgumentParser(description='Collection dataset')
     parser.add_argument(
-        '--config', type=str, help='config path ex. config/sample/check_correlation/point_mass.yml')
+        '--config', type=str, default='config/sample/check_correlation/point_mass.yml', help='config path ex. config/sample/check_correlation/point_mass.yml')
     args = parser.parse_args()
 
     with open(args.config) as file:
         cfg = yaml.safe_load(file)
         pprint.pprint(cfg)
 
-    env = load(**cfg["environment"])
+    _env = load(**cfg["environment"])
 
     # ================#
     # Define model   #
@@ -38,15 +38,14 @@ def main():
     latent_position = []
 
     for i in range(5000):
-        time_step = env.reset()
+        time_step = _env.reset()
 
-        video = env.physics.render(64, 64, camera_id=0)
-        I_t = torch.tensor(video.transpose(2, 0, 1)[np.newaxis, :, :, :]/255.0).to(cfg["device"])
-
+        I_t = env._images_to_observation(_env.physics.render(64, 64, camera_id=0).transpose(2, 0, 1)[np.newaxis, :, :, :], 8).to(cfg["device"])
+        
         x_q_t = model.encoder.sample_mean({"I_t": I_t})
 
         latent_position.append(x_q_t.to("cpu").detach().numpy()[0])
-        observation_position.append(time_step.observation["position"][np.newaxis, :])
+        observation_position.append(time_step.observation["position"])
 
     all_observation_position = np.stack(observation_position)
     print(all_observation_position.shape)
@@ -62,12 +61,12 @@ def main():
     print(value[0, 1])
 
     for idx in range(len(all_latent_position)):
-        color = list(colorsys.hsv_to_rgb(
-            0.33*all_observation_position[idx, 0]/2., 0.33*all_observation_position[idx, 1], 0.5))
-        color[2] = 0.
+        color = list(colorsys.hsv_to_rgb((all_observation_position[idx, 0] + 0.1)*2.5, (all_observation_position[idx, 1] + 0.1)*5.0, 0.5))
         plt.scatter(all_latent_position[idx, 0],
                     all_latent_position[idx, 1], color=color, s=2)
+
     plt.show()
+    # plt.savefig("test")
 
     plt.scatter(all_observation_position[:, 0],
                 all_latent_position[:, 0], s=2.)

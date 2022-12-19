@@ -1,4 +1,4 @@
-batch_size: &batch_size 8
+batch_size: &batch_size 16
 epoch_size: 300 
 check_epoch: 20
 bit_depth: &bit_depth 8
@@ -59,7 +59,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: *batch_size
+      batch_size: 1
       shuffle: True
       drop_last: False
       num_workers: 8

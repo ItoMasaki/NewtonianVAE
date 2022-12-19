@@ -45,7 +45,7 @@ class Visualization:
         self.frames: list = []
         self.reconstruction_images = []
 
-    def append(self, I_t, rec_I_t, points):
+    def append(self, I_t, rec_I_t, points=None):
 
         self.ax1.set_title(r"$ I_t $")
         self.ax1.axis('off')
@@ -55,10 +55,13 @@ class Visualization:
 
         art_1 = self.ax1.imshow(I_t)
         art_2 = self.ax2.imshow(rec_I_t)
-        art_4 = self.ax4.scatter(
-            points[:, 0], points[:, 1], s=1., c=cmap(np.arange(0, len(points))/100))
+        if points is not None:
+            art_4 = self.ax4.scatter(
+                points[:, 0], points[:, 1], s=1., c=cmap(np.arange(0, len(points))/100))
 
-        self.frames.append([art_1, art_2, art_4])
+            self.frames.append([art_1, art_2, art_4])
+        else:
+            self.frames.append([art_1, art_2])
 
         self.reconstruction_images.append(rec_I_t)
 

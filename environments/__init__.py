@@ -167,7 +167,8 @@ class ControlSuiteEnv():
     reward = 0
 
     state = self._env.step(action)
-    reward += state.reward
+    if state.reward is not None:
+        reward += state.reward
     self.t += 1  # Increment internal timer
     done = state.last() or self.t == self.max_episode_length
 

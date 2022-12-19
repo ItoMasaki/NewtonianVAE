@@ -109,8 +109,8 @@ class NewtonianVAE(Model):
         with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
             loss = self.calculate_loss(train_x_dict)
 
-        # self.optimizer.zero_grad(set_to_none=True)
-        self.optimizer.zero_grad()
+        self.optimizer.zero_grad(set_to_none=True)
+        # self.optimizer.zero_grad()
 
         # backward
         self.scaler.scale(loss).backward()

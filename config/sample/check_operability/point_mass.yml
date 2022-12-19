@@ -3,6 +3,8 @@ device: &device cuda:0
 environment:                                                                                                   
   domain_name: point_mass_nvae                                                  
   task_name: easy
+  max_episode_length: 100
+  bit_depth: 8
 
 weight:
   path: results/2022_12_18_22_11_30/weights
