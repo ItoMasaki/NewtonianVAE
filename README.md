@@ -12,18 +12,23 @@ python3 -m pip install -r requirements.txt
 ### 1. Collect data
 Below command can collect dataset.
 ```bash
-./collect_data.py --config config/sample/collect_dataset/point_mass.yml
+./collect_data.py
 ```
 
 ### 2. Train model
 Below command can train the NewtonianVAE model
 ```bash
-./train.py --config config/sample/train/point_mass.yml
+./train.py
 ```
 
 ### 3. Check correlation
 ```bash
-./check_correlation.py --config config/sample/check_correlation/point_mass.yml
+./check_correlation.py
+```
+
+### 4. Check operability
+```bash
+./check_operability.py
 ```
 
 ## Dependencies
