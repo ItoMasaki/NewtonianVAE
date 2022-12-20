@@ -3,7 +3,7 @@ device: &device cpu
 
 
 environment:
-  domain_name: point_mass_nvae
+  domain_name: ycb_mass
   task_name: easy
   max_episode_length: 1000
   bit_depth: 8

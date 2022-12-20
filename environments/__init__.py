@@ -44,6 +44,7 @@ from dm_control.suite import walker
 
 from environments import reacher_nvae
 from environments import point_mass_nvae
+from environments import ycb_mass
 
 from utils.env import preprocess_observation_, postprocess_observation, _images_to_observation
 
