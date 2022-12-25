@@ -7,6 +7,15 @@ load_model_path: results/2022_11_27_23_29_53/weights
 load_model_file: 300.weight
 device: &device cuda:0
 use_data_efficiency: &use_data_efficiency True
+path: &path datasets/sample/point_mass_line
+
+
+environment:
+  domain_name: ycb_mass
+  task_name: easy
+  max_episode_length: 1000
+  bit_depth: 8
+
 
 
 model:
@@ -43,10 +52,10 @@ model:
 
 
 dataset:
-  path: &path datasets/sample/point_mass_line
   train:
     episode_size: &train_episode_size 1000
     sequence_size: &trin_sequence_size 100
+
     data:
       path: *path
       filename: train.npz
