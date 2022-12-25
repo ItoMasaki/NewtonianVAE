@@ -158,6 +158,8 @@ class Velocity(dist.Deterministic):
             C = torch.exp(torch.diag_embed(_C))
 
         # Dynamics inspired by Newton's motion equation
+        print(A.shape)
+        print(x_tn1.shape)
         v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum(
             "ijk,ik->ik", B, v_tn1) + torch.einsum("ijk,ik->ik", C, u_tn1))
 

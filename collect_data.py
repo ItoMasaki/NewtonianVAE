@@ -13,7 +13,7 @@ from environments import load, ControlSuiteEnv
 
 def main():
     parser = argparse.ArgumentParser(description='Collection dataset')
-    parser.add_argument('--config', type=str, default="config/sample/collect_dataset/point_mass.yml",
+    parser.add_argument('--config', type=str, default="config/sample/train/point_mass.yml",
                         help='config path e.g. config/sample/collect_dataset/point_mass.yml')
     args = parser.parse_args()
 
@@ -26,8 +26,8 @@ def main():
     for mode in config["dataset"].keys():
         episode_size = config["dataset"][mode]["episode_size"]
         sequence_size = config["dataset"][mode]["sequence_size"]
-        save_path = config["dataset"][mode]["save_path"]
-        save_filename = config["dataset"][mode]["save_filename"]
+        save_path = config["dataset"][mode]["data"]["path"]
+        save_filename = config["dataset"][mode]["data"]["filename"]
 
         print(f"############## CONFIG PARAMS [{mode}] ##############")
         print(f"  max_episode : {episode_size}")

@@ -70,7 +70,7 @@ def main():
     # ==============#
     model = NewtonianVAE(**cfg["model"])
 
-    if cfg["load_model"]:
+    if cfg["weight"]["load_model"]:
         model.load(cfg["load_model_path"], cfg["load_model_file"])
 
     best_loss: float = 1e32
