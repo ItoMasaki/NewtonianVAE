@@ -48,7 +48,7 @@ def main():
             action = 0.
 
             for _ in range(sequence_size):
-                env.render()
+                # env.render()
                 # action += np.concatenate([np.random.uniform(-0.01, 0.01, 2), np.random.uniform(-0.05, 0.05, 1)])
                 action += np.random.uniform(-0.01, 0.01, 2)
                 action = np.clip(action, -1, 1)
@@ -62,11 +62,11 @@ def main():
                     np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
 
-            # save_memory.append(np.concatenate(images),
-            #                    np.concatenate(actions), episode)
+            save_memory.append(np.concatenate(images),
+                               np.concatenate(actions), episode)
 
         print()
-        # save_memory.save(save_path, save_filename)
+        save_memory.save(save_path, save_filename)
 
 
 if __name__ == "__main__":

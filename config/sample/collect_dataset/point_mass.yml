@@ -1,17 +1,17 @@
-save_path: &save_path datasets/sample/point_mass_line
+save_path: &save_path datasets/sample/ycb_mass
 device: &device cpu
 
 
 environment:
   domain_name: ycb_mass
   task_name: easy
-  max_episode_length: 1000
+  max_episode_length: 100
   bit_depth: 8
 
 
 dataset:
   train:
-    episode_size: &train_episode_size 1000
+    episode_size: &train_episode_size 500
     sequence_size: &train_sequence_size 100
     save_path: *save_path
     save_filename: train.npz

@@ -43,7 +43,7 @@ model:
 
 
 dataset:
-  path: &path datasets/sample/point_mass_line
+  path: &path datasets/sample/ycb_mass
   train:
     episode_size: &train_episode_size 1000
     sequence_size: &trin_sequence_size 100
