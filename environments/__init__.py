@@ -161,7 +161,7 @@ class ControlSuiteEnv():
   def reset(self):
     self.t = 0  # Reset internal timer
     state = self._env.reset()
-    return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth)
+    return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), state
 
   def step(self, action):
     action = action.detach().numpy()
@@ -176,7 +176,7 @@ class ControlSuiteEnv():
     observation = _images_to_observation(
         self._env.physics.render(64, 64, camera_id=0), self.bit_depth)
 
-    return observation, reward, done
+    return observation, state, reward, done
 
   def render(self):
     cv2.imshow('screen', self._env.physics.render(camera_id=0)[:, :, ::-1])

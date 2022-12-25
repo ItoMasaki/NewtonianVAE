@@ -55,9 +55,9 @@ def main():
     os.makedirs(save_root_path, exist_ok=True)
     shutil.copy2(args.config, save_root_path+"/")
 
-    # ====================#
+    #====================#
     # Define data loader #
-    # ====================#
+    #====================#
     train_loader = memory.make_loader(cfg, "train")
     validation_loader = memory.make_loader(cfg, "validation")
     test_loader = memory.make_loader(cfg, "test")
@@ -65,13 +65,11 @@ def main():
     visualizer = visualize.Visualization()
     writer = SummaryWriter(comment="NewtonianVAE")
 
-    # ==============#
+    #==============#
     # Define model #
-    # ==============#
+    #==============#
     model = NewtonianVAE(**cfg["model"])
 
-    if cfg["weight"]["load_model"]:
-        model.load(cfg["load_model_path"], cfg["load_model_file"])
 
     best_loss: float = 1e32
     beta: float = 0.001
@@ -85,37 +83,37 @@ def main():
             validation_loss: float = 0.
             test_loss: float = 0.
 
-            # ================#
+            #================#
             # Training phase #
-            # ================#
+            #================#
             train_loss = data_loop(epoch, train_loader,
                                    model, cfg["device"], beta, train_mode=True)
             writer.add_scalar('train_loss', train_loss, epoch - 1)
 
-            # ==================#
+            #==================#
             # Validation phase #
-            # ==================#
+            #==================#
             validation_loss = data_loop(
                 epoch, validation_loader, model, cfg["device"], beta, train_mode=False)
             writer.add_scalar('validation_loss', validation_loss, epoch - 1)
 
-            # ============#
-            # Test phase #
-            # ============#
-            for idx, (I, u) in enumerate(test_loader):
-                continue
-
             pbar.set_postfix({"validation": validation_loss,
                               "train": train_loss})
 
-            # ============#
+            #============#
+            # Test phase #
+            #============#
+            for idx, (I, u) in enumerate(test_loader):
+                continue
+
+            #============#
             # Save model #
-            # ============#
+            #============#
             model.save(f"{save_weight_path}", f"{epoch}.weight")
 
-            # =================#
+            #=================#
             # Save best model #
-            # =================#
+            #=================#
             if validation_loss < best_loss:
                 model.save(f"{save_weight_path}", f"best.weight")
                 best_loss = validation_loss
@@ -123,9 +121,9 @@ def main():
             if 30 <= epoch and epoch < 60:
                 beta += 0.0333
 
-            # ==============#
+            #==============#
             # Encode video #
-            # ==============#
+            #==============#
             if epoch % cfg["check_epoch"] == 0:
 
                 all_positions: list = []
