@@ -1,12 +1,24 @@
-batch_size: &batch_size 16
+batch_size: &batch_size 1
 epoch_size: 300 
 check_epoch: 20
 bit_depth: &bit_depth 8
-load_model: False
-load_model_path: results/2022_11_27_23_29_53/weights
-load_model_file: 300.weight
-device: &device cuda:0
-use_data_efficiency: &use_data_efficiency True
+device: &device cpu
+path: &path datasets/sample/ycb_mass
+
+
+weight:
+  load_model: False
+  path: results/2022_12_18_22_11_30/weights
+  filename: 300.weight
+
+
+
+environment:
+  domain_name: ycb_mass
+  task_name: easy
+  max_episode_length: 1000
+  bit_depth: 8
+
 
 
 model:
@@ -35,18 +47,19 @@ model:
     act_func_name: ReLU
     delta_time: *delta_time
     device: *device
-    use_data_efficiency: *use_data_efficiency
+    use_data_efficiency: True
 
   optimizer: Adam
   optimizer_params:
     lr: 0.0003
 
 
+
 dataset:
-  path: &path datasets/sample/point_mass_line
   train:
-    episode_size: &train_episode_size 1000
+    episode_size: &train_episode_size 10
     sequence_size: &trin_sequence_size 100
+
     data:
       path: *path
       filename: train.npz
@@ -68,6 +81,7 @@ dataset:
   validation:
     episode_size: &validation_episode_size 100
     sequence_size: &validation_sequence_size 100
+
     data:
       path: *path
       filename: validation.npz
@@ -80,7 +94,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: *batch_size
+      batch_size: 16
       shuffle: False
       drop_last: False
       num_workers: 8
