@@ -14,7 +14,7 @@ class Encoder1(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str):
-        super().__init__(var=["x_top_t"], cond_var=["I_top_t"], name="q_top")
+        super().__init__(var=["x_t"], cond_var=["I_top_t"], name="q_top")
 
         activation_func = getattr(nn, act_func_name)
 
@@ -54,7 +54,7 @@ class Encoder2(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str):
-        super().__init__(var=["x_side_t"], cond_var=["I_side_t"], name="q_side")
+        super().__init__(var=["x_t"], cond_var=["I_side_t"], name="q_side")
 
         activation_func = getattr(nn, act_func_name)
 
@@ -94,7 +94,7 @@ class Encoder3(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str):
-        super().__init__(var=["x_hand_t"], cond_var=["I_hand_t"], name="q_hand")
+        super().__init__(var=["x_t"], cond_var=["I_hand_t"], name="q_hand")
 
         activation_func = getattr(nn, act_func_name)
 
@@ -135,7 +135,7 @@ class Decoder1(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
-        super().__init__(var=["I_top_t"], cond_var=["x_top_t"])
+        super().__init__(var=["I_t"], cond_var=["x_top_t"])
 
         activation_func = getattr(nn, act_func_name)
 
@@ -178,7 +178,7 @@ class Decoder2(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
-        super().__init__(var=["I_side_t"], cond_var=["x_side_t"])
+        super().__init__(var=["I_t"], cond_var=["x_side_t"])
 
         activation_func = getattr(nn, act_func_name)
 
@@ -221,7 +221,7 @@ class Decoder3(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
-        super().__init__(var=["I_hand_t"], cond_var=["x_hand_t"])
+        super().__init__(var=["I_t"], cond_var=["x_hand_t"])
 
         activation_func = getattr(nn, act_func_name)
 

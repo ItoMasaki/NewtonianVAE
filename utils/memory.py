@@ -15,7 +15,11 @@ class ExperienceReplay():
         self.action_size = action_size
         self.bit_depth = bit_depth
 
-        self.colors = np.empty(
+        self.colors_top = np.empty(
+            (episode_size, sequence_size, 3, 64, 64), dtype=np.float32)
+        self.colors_side = np.empty(
+            (episode_size, sequence_size, 3, 64, 64), dtype=np.float32)
+        self.colors_hand = np.empty(
             (episode_size, sequence_size, 3, 64, 64), dtype=np.float32)
         self.actions = np.empty(
             (episode_size, sequence_size, action_size), dtype=np.float32)
@@ -24,17 +28,25 @@ class ExperienceReplay():
         return len(self.actions)
 
     def __getitem__(self, index):
-        colors = self.colors[index]
+        colors_top = self.colors[index]
+        colors_side = self.colors[index]
+        colors_hand = self.colors[index]
         actions = torch.from_numpy(self.actions[index])
 
-        return _images_to_observation(colors, self.bit_depth), actions
+        return _images_to_observation(colors_top, self.bit_depth), _images_to_observation(colors_side, self.bit_depth), _images_to_observation(colors_hand, self.bit_depth), actions
 
-    def append(self, color, action, batch):
-        self.colors[batch] = postprocess_observation(color, self.bit_depth)
+    def append(self, color_top, color_side, color_hand, action, batch):
+        self.colors_top[batch] = postprocess_observation(color_top, self.bit_depth)
+        self.colors_side[batch] = postprocess_observation(color_side, self.bit_depth)
+        self.colors_hand[batch] = postprocess_observation(color_hand, self.bit_depth)
         self.actions[batch] = action
 
     def reset(self):
-        self.colors = np.empty(
+        self.colors_top = np.empty(
+            (self.episode_size, 3, 64, 64), dtype=np.float32)
+        self.colors_side = np.empty(
+            (self.episode_size, 3, 64, 64), dtype=np.float32)
+        self.colors_hand = np.empty(
             (self.episode_size, 3, 64, 64), dtype=np.float32)
         self.actions = np.empty(
             (self.episode_size, self.sequence_size, self.action_size), dtype=np.float32)
@@ -46,11 +58,13 @@ class ExperienceReplay():
             pass
 
         np.savez(f"{path}/{filename}", **
-                {"colors": self.colors, "actions": self.actions})
+                {"colors_top": self.colors_top, "colors_side": self.colors_side, "colors_hand": self.colors_hand, "actions": self.actions})
 
     def load(self, path, filename):
         with np.load(f"{path}/{filename}", allow_pickle=True) as data:
-            self.colors = data["colors"][0:self.episode_size]
+            self.colors_top = data["colors_top"][0:self.episode_size]
+            self.colors_side = data["colors_side"][0:self.episode_size]
+            self.colors_hand = data["colors_hand"][0:self.episode_size]
             self.actions = data["actions"][0:self.episode_size]
 
 def make_loader(cfg, mode):
@@ -58,12 +72,12 @@ def make_loader(cfg, mode):
     # Define experiment replay #
     #==========================#
     replay = ExperienceReplay(**cfg["dataset"][mode]["memory"])
-     
+
     #==============#
     # Load dataset #
     #==============#
     replay.load(**cfg["dataset"][mode]["data"])
-     
+
     #====================#
     # Define data loader #
     #====================#

@@ -59,7 +59,7 @@ class NewtonianVAE(Model):
         self.x_sidehand_t = dist.ProductOfNormal([self.encoder2, self.encoder3])
         self.x_handtop_t = dist.ProductOfNormal([self.encoder3, self.encoder1])
         self.x_topsidehand_t = dist.ProductOfNormal([self.encoder1, self.encoder2, self.encoder3])
-        self.phi = Normal(loc=torch.tensor(0.), scale=torch.tensor(1.), var=['x'], features_shape=[phi_dim], name='p_{1}')
+        self.phi = dist.Normal(loc=torch.tensor(0.), scale=torch.tensor(1.), var=['x_t'], features_shape=[phi_dim], name='p_{1}')
 
         # moe
         self.x_moe = dist.MixtureOfNormal([self.x_top_t, self.x_side_t, self.x_hand_t, self.x_topside_t, self.x_sidehand_t, self.x_handtop_t, self.x_topsidehand_t, self.phi])
@@ -83,7 +83,7 @@ class NewtonianVAE(Model):
         print("self.recon_los_top=", self.step_loss_top)
 
         self.distributions = nn.ModuleList(
-            [self.x_top_t, self.x_side_t, self.x_hand_t, self.x_topside_t, self.x_sidehand_t, self.x_handtop_t, self.x_topsidehand_t, self.phi, self.x_moe, self.decoder, self.transition, self.velocity])
+            [self.x_top_t, self.x_side_t, self.x_hand_t, self.x_topside_t, self.x_sidehand_t, self.x_handtop_t, self.x_topsidehand_t, self.phi, self.x_moe, self.decoder1, self.decoder2, self.decoder3, self.transition, self.velocity])
 
         # -------------------------#
         # Set params and optim     #
