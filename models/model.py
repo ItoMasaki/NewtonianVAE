@@ -75,11 +75,15 @@ class NewtonianVAE(Model):
         u = input_var_dict["u"]
         beta = input_var_dict["beta"]
 
+        print(I.shape)
+        print(u.shape)
+
         total_loss = 0.
 
         T, B, C = u.shape
         
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
+        print(I[0].dtype)
         x_q_tn1 = self.encoder.sample({"I_t": I[0]}, reparam=True)["x_t"]
 
         for step in range(1, T-1):
@@ -108,6 +112,7 @@ class NewtonianVAE(Model):
 
         with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
             loss = self.calculate_loss(train_x_dict)
+            print(loss)
 
         self.optimizer.zero_grad(set_to_none=True)
         # self.optimizer.zero_grad()
