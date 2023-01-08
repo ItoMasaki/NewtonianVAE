@@ -3,7 +3,7 @@ epoch_size: 300
 check_epoch: 20
 bit_depth: &bit_depth 8
 device: &device cpu
-path: &path datasets/sample/mopoe
+path: &path datasets
 
 
 weight:
@@ -58,7 +58,7 @@ dataset:
 
     data:
       path: *path
-      filename: mopoe_train.npz
+      filename: train.npz
 
     memory:
       episode_size: *train_episode_size
@@ -80,7 +80,7 @@ dataset:
 
     data:
       path: *path
-      filename: mopoe_validation.npz
+      filename: validation.npz
 
     memory:
       episode_size: *validation_episode_size
@@ -101,7 +101,7 @@ dataset:
     sequence_size: &test_sequence_size 100
     data:
       path: *path
-      filename: mopoe_test.npz
+      filename: test.npz
 
     memory:
       episode_size: *test_episode_size

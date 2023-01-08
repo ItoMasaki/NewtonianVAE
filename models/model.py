@@ -105,7 +105,7 @@ class NewtonianVAE(Model):
 
     def calculate_loss(self, input_var_dict: dict = {}):
 
-        I = input_var_dict["I_top", "I_side", "I-hand"]
+        I = input_var_dict["I_top", "I_side", "I_hand"]
         u = input_var_dict["u"]
         beta = input_var_dict["beta"]
 
@@ -114,12 +114,12 @@ class NewtonianVAE(Model):
         T, B, C = u.shape
 
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-        x_q_tn1 = self.x_moe.sample({"I_top_t": I[0], "I_side_t": I[0], "I_hand_t": I[0]}, reparam=True)["x_t"]
+        x_q_tn1 = self.x_moe.sample({"I_top": I[0], "I_side": I[1], "I_hand": I[2]}, reparam=True)["x_t"]
 
         for step in range(1, T-1):
 
             # x^q_{t} ~ p(x^q_{t} | I_{t})
-            x_q_t = self.x_moe.sample({"I_top_t": I[step], "I_side_t": I[step], "I_hand_t": I[step]}, reparam=True)["x_t"]
+            x_q_t = self.x_moe.sample({"I_top": I[0][step], "I_side": I[1][step], "I_hand": I[2][step]}, reparam=True)["x_t"]
 
             # v_t = (x^q_{t} - x^q_{t-1})/dt
             v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -128,7 +128,7 @@ class NewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_top_t': I[step+1], ""'beta': beta})
+            step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_top': I[0][step+1], 'I_side': I[1][step+1], 'I_hand': I[2][step+1], 'beta': beta})
 
             total_loss += step_loss
 
@@ -179,10 +179,10 @@ class NewtonianVAE(Model):
             with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
 
                 # x^q_{t-1} ~ p(x^q_{t-1) | I_{t-1))
-                x_q_tn1 = self.x_moe.sample_mean({"I_top_t": I_top_tn1, "I_side_t": I_side_tn1, "I_hand_t": I_hand_tn1})
+                x_q_tn1 = self.x_moe.sample_mean({"I_top": I_top_tn1, "I_side": I_side_tn1, "I_hand": I_hand_tn1})
 
                 # x^q_t ~ p(x^q_t | I_t)
-                x_q_t = self.x_moe.sample_mean({"I_top_t": I_top_t, "I_side_t": I_side_t, "I_hand_t": I_hand_t})
+                x_q_t = self.x_moe.sample_mean({"I_top": I_top_t, "I_side": I_side_t, "I_hand": I_hand_t})
 
                 # p(I_t | x_t)
                 I_top_t = self.decoder1.sample_mean({"x_top_t": x_q_t})

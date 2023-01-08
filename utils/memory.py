@@ -28,9 +28,9 @@ class ExperienceReplay():
         return len(self.actions)
 
     def __getitem__(self, index):
-        colors_top = self.colors[index]
-        colors_side = self.colors[index]
-        colors_hand = self.colors[index]
+        colors_top = self.colors_top[index]
+        colors_side = self.colors_side[index]
+        colors_hand = self.colors_hand[index]
         actions = torch.from_numpy(self.actions[index])
 
         return _images_to_observation(colors_top, self.bit_depth), _images_to_observation(colors_side, self.bit_depth), _images_to_observation(colors_hand, self.bit_depth), actions
@@ -62,10 +62,10 @@ class ExperienceReplay():
 
     def load(self, path, filename):
         with np.load(f"{path}/{filename}", allow_pickle=True) as data:
-            self.colors_top = data["colors_top"][0:self.episode_size]
-            self.colors_side = data["colors_side"][0:self.episode_size]
-            self.colors_hand = data["colors_hand"][0:self.episode_size]
-            self.actions = data["actions"][0:self.episode_size]
+            self.colors_top = data["I_top"][0:self.episode_size]
+            self.colors_side = data["I_side"][0:self.episode_size]
+            self.colors_hand = data["I_hand"][0:self.episode_size]
+            self.actions = data["action"][0:self.episode_size]
 
 def make_loader(cfg, mode):
     #==========================#
