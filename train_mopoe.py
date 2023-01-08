@@ -29,10 +29,10 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
         #         device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
 
         if train_mode:
-            mean_loss += model.train({"I_top": I_top.to(device, non_blocking=True), "I_side": I_side.to(device, non_blocking=True), "I_hand": I_hand.to(device, non_blocking=True), "action": u.to(
+            mean_loss += model.train({"I_top_t": I_top.to(device, non_blocking=True), "I_side_t": I_side.to(device, non_blocking=True), "I_hand_t": I_hand.to(device, non_blocking=True), "u": u.to(
                 device, non_blocking=True), "beta": beta}) * batch_size
         else:
-            mean_loss += model.test({"I_top": I_top.to(device, non_blocking=True), "I_side": I_side.to(device, non_blocking=True), "I_hand": I_hand.to(device, non_blocking=True), "action": u.to(
+            mean_loss += model.test({"I_top_t": I_top.to(device, non_blocking=True), "I_side_t": I_side.to(device, non_blocking=True), "I_hand_t": I_hand.to(device, non_blocking=True), "u": u.to(
                 device, non_blocking=True), "beta": beta}) * batch_size
 
 
