@@ -71,6 +71,7 @@ def main():
     # Define model #
     #==============#
     model = NewtonianVAE(**cfg["model"])
+    print(model)
 
 
     best_loss: float = 1e32
