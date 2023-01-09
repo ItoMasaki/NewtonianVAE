@@ -19,21 +19,19 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
     mean_loss = 0
 
     for batch_idx, (I_top, I_side, I_hand, u) in enumerate(tqdm(loader)):
-        batch_size = I_top.size()[0]
-
-        # if train_mode:
-        #     mean_loss += model.train({"I_top": I_top.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "I_side": I_side.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "I_hand": I_hand.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "u": u.to(
-        #         device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
-        # else:
-        #     mean_loss += model.test({"I_top": I_top.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "I_side": I_side.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "I_hand": I_hand.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "u": u.to(
-        #         device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
+        batch_size = 1
 
         if train_mode:
-            mean_loss += model.train({"I_top_t": I_top.to(device, non_blocking=True), "I_side_t": I_side.to(device, non_blocking=True), "I_hand_t": I_hand.to(device, non_blocking=True), "u": u.to(
-                device, non_blocking=True), "beta": beta}) * batch_size
+            mean_loss += model.train({"I_top_t": I_top.to(device, non_blocking=True).permute(0, 1, 4, 2, 3), "I_side_t": I_side.to(device, non_blocking=True).permute(0, 1, 4, 2, 3), "I_hand_t": I_hand.to(device, non_blocking=True).permute(0, 1, 4, 2, 3), "u": u.to(
+                device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
         else:
-            mean_loss += model.test({"I_top_t": I_top.to(device, non_blocking=True), "I_side_t": I_side.to(device, non_blocking=True), "I_hand_t": I_hand.to(device, non_blocking=True), "u": u.to(
-                device, non_blocking=True), "beta": beta}) * batch_size
+            mean_loss += model.test({"I_top_t": I_top.to(device, non_blocking=True).permute(0, 1, 4, 2, 3), "I_side_t": I_side.to(device, non_blocking=True).permute(0, 1, 4, 2, 3), "I_hand_t": I_hand.to(device, non_blocking=True).permute(0, 1, 4, 2, 3), "u": u.to(
+                device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
+
+        # if train_mode:
+        #     mean_loss += model.train({"I_top_t": I_top.to(device, non_blocking=True), "I_side_t": I_side.to(device, non_blocking=True), "I_hand_t": I_hand.to(device, non_blocking=True), "u": u.to(device, non_blocking=True), "beta": beta}) * batch_size
+        # else:
+        #     mean_loss += model.test({"I_top_t": I_top.to(device, non_blocking=True), "I_side_t": I_side.to(device, non_blocking=True), "I_hand_t": I_hand.to(device, non_blocking=True), "u": u.to(device, non_blocking=True), "beta": beta}) * batch_size
 
 
     mean_loss /= len(loader.dataset)

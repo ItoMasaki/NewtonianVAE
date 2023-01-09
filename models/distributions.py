@@ -38,8 +38,8 @@ class Encoder1(dist.Normal):
             nn.Softplus()
         )
 
-    def forward(self, I_t: torch.Tensor) -> dict:
-        feature = self.encoder(I_t)
+    def forward(self, I_top_t: torch.Tensor) -> dict:
+        feature = self.encoder(I_top_t)
         B, C, W, H = feature.shape
         feature = feature.reshape((B, C*W*H))
 
@@ -78,8 +78,8 @@ class Encoder2(dist.Normal):
             nn.Softplus()
         )
 
-    def forward(self, I_t: torch.Tensor) -> dict:
-        feature = self.encoder(I_t)
+    def forward(self, I_side_t: torch.Tensor) -> dict:
+        feature = self.encoder(I_side_t)
         B, C, W, H = feature.shape
         feature = feature.reshape((B, C*W*H))
 
@@ -118,8 +118,8 @@ class Encoder3(dist.Normal):
             nn.Softplus()
         )
 
-    def forward(self, I_t: torch.Tensor) -> dict:
-        feature = self.encoder(I_t)
+    def forward(self, I_hand_t: torch.Tensor) -> dict:
+        feature = self.encoder(I_hand_t)
         B, C, W, H = feature.shape
         feature = feature.reshape((B, C*W*H))
 
@@ -157,13 +157,13 @@ class Decoder1(dist.Normal):
 
         self.device = device
 
-    def forward(self, x_t: torch.Tensor) -> dict:
-        batchsize = len(x_t)
+    def forward(self, x_top_t: torch.Tensor) -> dict:
+        batchsize = len(x_top_t)
         xy_tiled = torch.from_numpy(
             np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
 
         z_tiled = torch.repeat_interleave(
-            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
+            x_top_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
 
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
@@ -200,13 +200,13 @@ class Decoder2(dist.Normal):
 
         self.device = device
 
-    def forward(self, x_t: torch.Tensor) -> dict:
-        batchsize = len(x_t)
+    def forward(self, x_side_t: torch.Tensor) -> dict:
+        batchsize = len(x_side_t)
         xy_tiled = torch.from_numpy(
             np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
 
         z_tiled = torch.repeat_interleave(
-            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
+            x_side_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
 
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
@@ -243,13 +243,13 @@ class Decoder3(dist.Normal):
 
         self.device = device
 
-    def forward(self, x_t: torch.Tensor) -> dict:
-        batchsize = len(x_t)
+    def forward(self, x_hand_t: torch.Tensor) -> dict:
+        batchsize = len(x_hand_t)
         xy_tiled = torch.from_numpy(
             np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
 
         z_tiled = torch.repeat_interleave(
-            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
+            x_hand_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
 
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
