@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 
 from models import NewtonianVAE
 from utils import memory, env
-from environments import load
+from environments import load, ControlSuiteEnv
 
 
 def main():
@@ -19,14 +19,14 @@ def main():
     # ================#
     parser = argparse.ArgumentParser(description='Collection dataset')
     parser.add_argument(
-        '--config', type=str, default='config/sample/check_correlation/point_mass.yml', help='config path ex. config/sample/check_correlation/point_mass.yml')
+        '--config', type=str, default='config/sample/train/point_mass.yml', help='config path ex. config/sample/check_correlation/point_mass.yml')
     args = parser.parse_args()
 
     with open(args.config) as file:
         cfg = yaml.safe_load(file)
         pprint.pprint(cfg)
 
-    _env = load(**cfg["environment"])
+    _env = ControlSuiteEnv(**cfg["environment"])
 
     # ================#
     # Define model   #
@@ -38,14 +38,14 @@ def main():
     latent_position = []
 
     for i in range(5000):
-        time_step = _env.reset()
+        observation, state = _env.reset()
 
-        I_t = env._images_to_observation(_env.physics.render(64, 64, camera_id=0).transpose(2, 0, 1)[np.newaxis, :, :, :], 8).to(cfg["device"])
+        observation, state, reward, done = _env.step(torch.zeros(2))
         
-        x_q_t = model.encoder.sample_mean({"I_t": I_t})
+        x_q_t = model.encoder.sample_mean({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :]})
 
         latent_position.append(x_q_t.to("cpu").detach().numpy()[0])
-        observation_position.append(time_step.observation["position"])
+        observation_position.append(state.observation["position"])
 
     all_observation_position = np.stack(observation_position)
     print(all_observation_position.shape)

@@ -17,8 +17,8 @@ fig, (axis1, axis2) = plt.subplots(1, 2, tight_layout=True)
 
 def main():
     parser = argparse.ArgumentParser(description='Collection dataset')
-    parser.add_argument('--config', type=str, default="config/sample/check_operability/point_mass.yml",
-                        help='config path e.g. config/sample/check_operability/point_mass.yml')
+    parser.add_argument('--config', type=str, default="config/sample/point_mass.yml",
+                        help='config path e.g. config/sample/point_mass.yml')
     args = parser.parse_args()
 
     with open(args.config) as _file:
@@ -39,7 +39,7 @@ def main():
         #==================#
         _env = ControlSuiteEnv(**cfg["environment"])
         time_step = _env.reset()
-        target_observation, reward, done = _env.step(torch.zeros(1, 2))
+        target_observation, state, reward, done = _env.step(torch.zeros(1, 2))
         target_x_q_t = model.encoder.sample_mean({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"])})
 
         _env = ControlSuiteEnv(**cfg["environment"])
@@ -49,7 +49,7 @@ def main():
             #===================#
             # Get current image #
             #===================#
-            observation, reward, done = _env.step(action.cpu())
+            observation, state, reward, done = _env.step(action.cpu())
             x_q_t = model.encoder.sample_mean({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"])})
 
             #============#

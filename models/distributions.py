@@ -138,9 +138,9 @@ class Velocity(dist.Deterministic):
             )
 
         else:
-            self.A = torch.zeros((batch_size, 2, 2)).to(self.device)
-            self.B = torch.zeros((batch_size, 2, 2)).to(self.device)
-            self.C = torch.diag_embed(torch.ones(batch_size, 2)).to(self.device)
+            self.A = torch.zeros((1, 2, 2)).to(self.device)
+            self.B = torch.zeros((1, 2, 2)).to(self.device)
+            self.C = torch.diag_embed(torch.ones(1, 2)).to(self.device)
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
@@ -148,9 +148,9 @@ class Velocity(dist.Deterministic):
 
         # For data efficiency
         if self.use_data_efficiency:
-            A = self.A[:len(combined_vector)]
-            B = self.B[:len(combined_vector)]
-            C = self.C[:len(combined_vector)]
+            A = self.A
+            B = self.B
+            C = self.C
         else:
             _A, _B, _C = torch.chunk(self.coefficient_ABC(combined_vector), 3, dim=-1)
             A = torch.diag_embed(_A)
