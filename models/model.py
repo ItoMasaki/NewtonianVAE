@@ -45,8 +45,7 @@ class NewtonianVAE(Model):
         # -------------------------#
         recon_loss = E(self.transition, LogProb(self.decoder))
         kl_loss = KL(self.encoder, self.transition)
-        self.step_loss = (beta*kl_loss - recon_loss).mean()
-        print(self.step_loss)
+        self.loss_cls = (beta*kl_loss - recon_loss).mean()
 
         self.distributions = nn.ModuleList(
             [self.encoder, self.decoder, self.transition, self.velocity])
@@ -94,7 +93,7 @@ class NewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
 
             total_loss += step_loss
 
