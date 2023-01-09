@@ -1,6 +1,6 @@
 batch_size: &batch_size 1
-epoch_size: 300 
-check_epoch: 20
+epoch_size: 50000 
+check_epoch: 200
 bit_depth: &bit_depth 8
 device: &device cpu
 path: &path datasets/real_world
@@ -75,7 +75,7 @@ dataset:
       pin_memory: True
 
   validation:
-    episode_size: &validation_episode_size 15
+    episode_size: &validation_episode_size 30
     sequence_size: &validation_sequence_size 20
 
     data:
@@ -97,7 +97,7 @@ dataset:
       pin_memory: True
 
   test:
-    episode_size: &test_episode_size 5
+    episode_size: &test_episode_size 30
     sequence_size: &test_sequence_size 20
     data:
       path: *path
