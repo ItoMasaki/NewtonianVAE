@@ -53,7 +53,7 @@ model:
 
 dataset:
   train:
-    episode_size: &train_episode_size 10
+    episode_size: &train_episode_size 30
     sequence_size: &train_sequence_size 100
 
     data:
@@ -75,7 +75,7 @@ dataset:
       pin_memory: True
 
   validation:
-    episode_size: &validation_episode_size 100
+    episode_size: &validation_episode_size 15
     sequence_size: &validation_sequence_size 100
 
     data:

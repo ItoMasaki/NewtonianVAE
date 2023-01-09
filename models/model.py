@@ -62,8 +62,8 @@ class NewtonianVAE(Model):
         self.phi = dist.Normal(loc=torch.tensor(0.), scale=torch.tensor(1.), var=['x_t'], features_shape=[phi_dim], name='p_{1}')
 
         # moe
-        self.x_moe = dist.MixtureOfNormal([self.x_top_t, self.x_side_t, self.x_hand_t, self.x_topside_t, self.x_sidehand_t, self.x_handtop_t, self.x_topsidehand_t, self.phi])
-        print("x_q_t=", self.x_moe)
+        self.x_moe = dist.MixtureOfNormal([self.x_top_t, self.x_side_t, self.x_hand_t, self.x_topside_t, self.x_sidehand_t, self.x_handtop_t, self.x_topsidehand_t])
+        # print("x_q_t=", self.x_moe)
 
         # -------------------------#
         # Define loss functions   #
@@ -78,12 +78,14 @@ class NewtonianVAE(Model):
         self.step_loss_top = (beta*kl_loss - recon_loss_top).mean()
         self.step_loss_side = (beta*kl_loss - recon_loss_side).mean()
         self.step_loss_hand = (beta*kl_loss - recon_loss_hand).mean()
-        print("self.recon_los_top=", self.step_loss_top)
-        print("self.recon_los_top=", self.step_loss_top)
-        print("self.recon_los_top=", self.step_loss_top)
+        # print("self.recon_los_top=", self.step_loss_top)
+        # print("self.recon_los_top=", self.step_loss_top)
+        # print("self.recon_los_top=", self.step_loss_top)
+        self.step_loss = self.step_loss_top + self.step_loss_side + self.step_loss_hand
 
         self.distributions = nn.ModuleList(
-            [self.x_top_t, self.x_side_t, self.x_hand_t, self.x_topside_t, self.x_sidehand_t, self.x_handtop_t, self.x_topsidehand_t, self.phi, self.x_moe, self.decoder1, self.decoder2, self.decoder3, self.transition, self.velocity])
+            [self.x_top_t, self.x_side_t, self.x_hand_t, self.x_topside_t, self.x_sidehand_t, self.x_handtop_t, self.x_topsidehand_t,self.x_moe, self.decoder1, self.decoder2, self.decoder3, self.transition, self.velocity])
+            # self.phi,
 
         # -------------------------#
         # Set params and optim     #
@@ -118,8 +120,9 @@ class NewtonianVAE(Model):
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
         x_q_tn1 = self.x_moe.sample({"I_top_t": I_top[0], "I_side_t": I_side[0], "I_hand_t": I_hand[0]}, reparam=True)["x_t"]
 
-        for step in range(1, T-1):
+        # print("I_top.shape = ", I_top.shape)
 
+        for step in range(1, T-1):
             # x^q_{t} ~ p(x^q_{t} | I_{t})
             x_q_t = self.x_moe.sample({"I_top_t": I_top[step], "I_side_t": I_side[step], "I_hand_t": I_hand[step]}, reparam=True)["x_t"]
 
@@ -187,9 +190,9 @@ class NewtonianVAE(Model):
                 x_q_t = self.x_moe.sample_mean({"I_top_t": I_top_t, "I_side_t": I_side_t, "I_hand_t": I_hand_t})
 
                 # p(I_t | x_t)
-                I_top_t = self.decoder1.sample_mean({"x_top_t": x_q_t})
-                I_side_t = self.decoder2.sample_mean({"x_side_t": x_q_t})
-                I_hand_t = self.decoder3.sample_mean({"x_hand_t": x_q_t})
+                I_top_t = self.decoder1.sample_mean({"x_t": x_q_t})
+                I_side_t = self.decoder2.sample_mean({"x_t": x_q_t})
+                I_hand_t = self.decoder3.sample_mean({"x_t": x_q_t})
 
                 # v_t = (x^q_t - x^q_{t-1})/dt
                 v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -202,9 +205,9 @@ class NewtonianVAE(Model):
                     {"x_tn1": x_q_t, "v_t": v_tp1})
 
                 # p(I_{t+1} | x_{t+1})
-                I_top_tp1 = self.decoder1.sample_mean({"x_top_t": x_p_tp1})
-                I_side_tp1 = self.decoder2.sample_mean({"x_side_t": x_p_tp1})
-                I_hand_tp1 = self.decoder3.sample_mean({"x_hand_t": x_p_tp1})
+                I_top_tp1 = self.decoder1.sample_mean({"x_t": x_p_tp1})
+                I_side_tp1 = self.decoder2.sample_mean({"x_t": x_p_tp1})
+                I_hand_tp1 = self.decoder3.sample_mean({"x_t": x_p_tp1})
 
         return I_top_t, I_side_t, I_hand_t, I_top_tp1, I_side_tp1, I_hand_tp1, x_q_t, x_p_tp1
 

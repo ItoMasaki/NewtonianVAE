@@ -135,7 +135,7 @@ class Decoder1(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
-        super().__init__(var=["I_t"], cond_var=["x_top_t"])
+        super().__init__(var=["I_top_t"], cond_var=["x_t"])
 
         activation_func = getattr(nn, act_func_name)
 
@@ -157,13 +157,13 @@ class Decoder1(dist.Normal):
 
         self.device = device
 
-    def forward(self, x_top_t: torch.Tensor) -> dict:
-        batchsize = len(x_top_t)
+    def forward(self, x_t: torch.Tensor) -> dict:
+        batchsize = len(x_t)
         xy_tiled = torch.from_numpy(
             np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
 
         z_tiled = torch.repeat_interleave(
-            x_top_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
+            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 3)
 
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
@@ -178,7 +178,7 @@ class Decoder2(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
-        super().__init__(var=["I_t"], cond_var=["x_side_t"])
+        super().__init__(var=["I_side_t"], cond_var=["x_t"])
 
         activation_func = getattr(nn, act_func_name)
 
@@ -200,13 +200,13 @@ class Decoder2(dist.Normal):
 
         self.device = device
 
-    def forward(self, x_side_t: torch.Tensor) -> dict:
-        batchsize = len(x_side_t)
+    def forward(self, x_t: torch.Tensor) -> dict:
+        batchsize = len(x_t)
         xy_tiled = torch.from_numpy(
             np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
 
         z_tiled = torch.repeat_interleave(
-            x_side_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
+            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 3)
 
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
@@ -221,7 +221,7 @@ class Decoder3(dist.Normal):
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
-        super().__init__(var=["I_t"], cond_var=["x_hand_t"])
+        super().__init__(var=["I_hand_t"], cond_var=["x_t"])
 
         activation_func = getattr(nn, act_func_name)
 
@@ -243,13 +243,13 @@ class Decoder3(dist.Normal):
 
         self.device = device
 
-    def forward(self, x_hand_t: torch.Tensor) -> dict:
-        batchsize = len(x_hand_t)
+    def forward(self, x_t: torch.Tensor) -> dict:
+        batchsize = len(x_t)
         xy_tiled = torch.from_numpy(
             np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
 
         z_tiled = torch.repeat_interleave(
-            x_hand_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
+            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 3)
 
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
@@ -303,9 +303,9 @@ class Velocity(dist.Deterministic):
             )
 
         else:
-            self.A = torch.zeros((1, 2, 2)).to(self.device)
-            self.B = torch.zeros((1, 2, 2)).to(self.device)
-            self.C = torch.diag_embed(torch.ones(1, 2)).to(self.device)
+            self.A = torch.zeros((1, 3, 3)).to(self.device)
+            self.B = torch.zeros((1, 3, 3)).to(self.device)
+            self.C = torch.diag_embed(torch.ones(1, 3)).to(self.device)
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
