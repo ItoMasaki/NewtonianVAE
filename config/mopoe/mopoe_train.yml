@@ -3,7 +3,7 @@ epoch_size: 300
 check_epoch: 20
 bit_depth: &bit_depth 8
 device: &device cpu
-path: &path datasets
+path: &path datasets/sample/point_mass
 
 
 weight:

@@ -41,7 +41,7 @@ def main():
         observation, state = _env.reset()
 
         observation, state, reward, done = _env.step(torch.zeros(2))
-        
+
         x_q_t = model.encoder.sample_mean({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :]})
 
         latent_position.append(x_q_t.to("cpu").detach().numpy()[0])

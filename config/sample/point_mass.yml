@@ -1,9 +1,9 @@
 batch_size: &batch_size 1
-epoch_size: 300 
+epoch_size: 300
 check_epoch: 20
 bit_depth: &bit_depth 8
 device: &device cpu
-path: &path datasets/sample/ycb_mass
+path: &path datasets/sample/point_mass
 
 
 weight:
@@ -12,7 +12,7 @@ weight:
 
 
 environment:
-  domain_name: ycb_mass
+  domain_name: point_mass_nvae
   task_name: easy
   max_episode_length: 1000
   bit_depth: 8
@@ -27,11 +27,11 @@ model:
 
   encoder_param:
     input_dim: 3
-    output_dim: 2
+    output_dim: 3
     act_func_name: ReLU
 
   decoder_param:
-    input_dim: 2
+    input_dim: 3
     output_dim: 3
     act_func_name: LeakyReLU
     device: *device
@@ -63,7 +63,7 @@ dataset:
     memory:
       episode_size: *train_episode_size
       sequence_size: *trin_sequence_size
-      action_size: 2
+      action_size: 3
       bit_depth: *bit_depth
       device: *device
 
@@ -85,7 +85,7 @@ dataset:
     memory:
       episode_size: *validation_episode_size
       sequence_size: *validation_sequence_size
-      action_size: 2
+      action_size: 3
       bit_depth: *bit_depth
       device: *device
 
@@ -106,7 +106,7 @@ dataset:
     memory:
       episode_size: *test_episode_size
       sequence_size: *test_sequence_size
-      action_size: 2
+      action_size: 3
       bit_depth: *bit_depth
       device: *device
 

@@ -43,36 +43,54 @@ def main():
         for episode in tqdm(range(episode_size)):
             time_step = env.reset()
 
-            images = []
+            images_top = []
+            images_side = []
+            images_hand = []
             actions = []
             positions = []
             action = 0.
 
             for _ in range(sequence_size):
-                action += np.random.uniform(-0.01, 0.01, 2)
+                action += np.random.uniform(-0.05, 0.05, 3)
+                action[2] = abs(action[2])
                 action = np.clip(action, -1, 1)
 
                 if np.any(np.abs(action) >= 1.):
                     print("Warn : Over 1.")
 
-                observation, state, reward, done = env.step(torch.from_numpy(action))
+                obs1, obs2, obs3, state, reward, done = env.step(torch.from_numpy(action))
 
-                images.append(observation.permute(2, 0, 1)[
+                images_top.append(obs1.permute(2, 0, 1)[
+                    np.newaxis, :, :, :])
+                images_side.append(obs2.permute(2, 0, 1)[
+                    np.newaxis, :, :, :])
+                images_hand.append(obs3.permute(2, 0, 1)[
                     np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
 
-            save_memory.append(np.concatenate(images),
+            save_memory.append(np.concatenate(images_top),
+                               np.concatenate(images_side),
+                               np.concatenate(images_hand),
                                np.concatenate(actions), episode)
 
         print()
         save_memory.save(save_path, save_filename)
 
-        viz = visualize.Visualization()
+        viz_top = visualize.Visualization()
+        viz_side = visualize.Visualization()
+        viz_hand = visualize.Visualization()
 
-        for idx in range(len(images)):
-            viz.append(postprocess_observation(images[idx][0].permute(1, 2, 0).numpy(), 8), postprocess_observation(images[idx][0].permute(1, 2, 0).numpy(), 8))
+        for idx in range(len(images_top)):
+            viz_top.append(postprocess_observation(images_top[idx][0].permute(1, 2, 0).numpy(), 8), postprocess_observation(images_top[idx][0].permute(1, 2, 0).numpy(), 8))
 
-        viz.encode(save_path + "/videos", f"{mode}.mp4")
+        for idx in range(len(images_side)):
+           viz_side.append(postprocess_observation(images_side[idx][0].permute(1, 2, 0).numpy(), 8), postprocess_observation(images_side[idx][0].permute(1, 2, 0).numpy(), 8))
+
+        for idx in range(len(images_hand)):
+            viz_hand.append(postprocess_observation(images_hand[idx][0].permute(1, 2, 0).numpy(), 8), postprocess_observation(images_hand[idx][0].permute(1, 2, 0).numpy(), 8))
+        viz_top.encode(save_path + "/videos/top", f"{mode}.mp4")
+        viz_side.encode(save_path + "/videos/side", f"{mode}.mp4")
+        viz_hand.encode(save_path + "/videos/hand", f"{mode}.mp4")
 
 
 

@@ -44,7 +44,7 @@ class NewtonianVAE(Model):
         # -------------------------#
         # Define hyperparams      #
         # -------------------------#
-        beta = Parameter("beta")
+        # beta = Parameter("beta")/
         # self.phi generates 3-dim samples
         phi_dim = 3
 
@@ -75,9 +75,9 @@ class NewtonianVAE(Model):
         # KL divergence
         kl_loss = KL(self.x_top_t, self.transition)+KL(self.x_side_t, self.transition)+KL(self.x_hand_t, self.transition)+KL(self.x_topside_t, self.transition)+KL(self.x_sidehand_t, self.transition)+KL(self.x_handtop_t, self.transition)+KL(self.x_topsidehand_t, self.transition)+KL(self.phi, self.transition)
         # Step loss
-        self.step_loss_top = (beta*kl_loss - recon_loss_top).mean()
-        self.step_loss_side = (beta*kl_loss - recon_loss_side).mean()
-        self.step_loss_hand = (beta*kl_loss - recon_loss_hand).mean()
+        self.step_loss_top = (kl_loss - recon_loss_top).mean()
+        self.step_loss_side = (kl_loss - recon_loss_side).mean()
+        self.step_loss_hand = (kl_loss - recon_loss_hand).mean()
         # print("self.recon_los_top=", self.step_loss_top)
         # print("self.recon_los_top=", self.step_loss_top)
         # print("self.recon_los_top=", self.step_loss_top)
@@ -111,7 +111,7 @@ class NewtonianVAE(Model):
         I_side = input_var_dict["I_side_t"]
         I_hand = input_var_dict["I_hand_t"]
         u = input_var_dict["u"]
-        beta = input_var_dict["beta"]
+        # beta = input_var_dict["beta"]
 
         total_loss = 0.
 
@@ -133,7 +133,7 @@ class NewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_top_t': I_top[step+1], 'I_side_t': I_side[step+1], 'I_hand_t': I_hand[step+1], 'beta': beta})
+            step_loss, variables = self.step_loss({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_top_t': I_top[step+1], 'I_side_t': I_side[step+1], 'I_hand_t': I_hand[step+1]})
 
             total_loss += step_loss
 

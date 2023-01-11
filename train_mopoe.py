@@ -15,19 +15,24 @@ from models import NewtonianVAE
 from utils import visualize, memory, env
 
 
-def data_loop(epoch, loader, model, device, beta, train_mode=False):
+def data_loop(epoch, loader, model, device, train_mode=False):
     mean_loss = 0
 
     for batch_idx, (I_top, I_side, I_hand, u) in enumerate(tqdm(loader)):
         batch_size = 1
 
+        # if train_mode:
+        #     mean_loss += model.train({"I_top_t": I_top.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "I_side_t": I_side.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "I_hand_t": I_hand.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "u": u.to(
+        #         device, non_blocking=True).permute(1, 0, 2)}) * batch_size
+        # else:
+        #     mean_loss += model.test({"I_top_t": I_top.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "I_side_t": I_side.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "I_hand_t": I_hand.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "u": u.to(
+        #         device, non_blocking=True).permute(1, 0, 2)}) * batch_size
         if train_mode:
-            mean_loss += model.train({"I_top_t": I_top.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "I_side_t": I_side.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "I_hand_t": I_hand.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "u": u.to(
-                device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
+            mean_loss += model.train({"I_top_t": I_top.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "I_side_t": I_side.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "I_hand_t": I_hand.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "u": u.to(
+                device, non_blocking=True).permute(1, 0, 2)}) * batch_size
         else:
-            mean_loss += model.test({"I_top_t": I_top.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "I_side_t": I_side.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "I_hand_t": I_hand.to(device, non_blocking=True).permute(1, 0, 4, 2, 3), "u": u.to(
-                device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
-
+            mean_loss += model.test({"I_top_t": I_top.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "I_side_t": I_side.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "I_hand_t": I_hand.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "u": u.to(
+                device, non_blocking=True).permute(1, 0, 2)}) * batch_size
         # if train_mode:
         #     mean_loss += model.train({"I_top_t": I_top.to(device, non_blocking=True), "I_side_t": I_side.to(device, non_blocking=True), "I_hand_t": I_hand.to(device, non_blocking=True), "u": u.to(device, non_blocking=True), "beta": beta}) * batch_size
         # else:
@@ -68,7 +73,9 @@ def main():
     validation_loader = memory.make_loader(cfg, "validation")
     test_loader = memory.make_loader(cfg, "test")
 
-    visualizer = visualize.Visualization()
+    visualizer_top = visualize.Visualization()
+    visualizer_side = visualize.Visualization()
+    visualizer_hand = visualize.Visualization()
     writer = SummaryWriter(comment="NewtonianVAE")
 
     #==============#
@@ -78,7 +85,7 @@ def main():
 
 
     best_loss: float = 1e32
-    beta: float = 0.001
+    # beta: float = 0.001
 
     with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
 
@@ -93,14 +100,14 @@ def main():
             # Training phase #
             #================#
             train_loss = data_loop(epoch, train_loader,
-                                   model, cfg["device"], beta, train_mode=True)
+                                   model, cfg["device"], train_mode=True)
             writer.add_scalar('train_loss', train_loss, epoch - 1)
 
             #==================#
             # Validation phase #
             #==================#
             validation_loss = data_loop(
-                epoch, validation_loader, model, cfg["device"], beta, train_mode=False)
+                epoch, validation_loader, model, cfg["device"], train_mode=False)
             writer.add_scalar('validation_loss', validation_loss, epoch - 1)
 
             pbar.set_postfix({"validation": validation_loss,
@@ -124,36 +131,83 @@ def main():
                 model.save(f"{save_weight_path}", f"best.weight")
                 best_loss = validation_loss
 
-            if 30 <= epoch and epoch < 60:
-                beta += 0.0333
+            # if 30 <= epoch and epoch < 60:
+            #     beta += 0.0333
 
             #==============#
             # Encode video #
             #==============#
             if epoch % cfg["check_epoch"] == 0:
+            # if epoch == 1:
 
                 all_positions: list = []
 
                 for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
-                    I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
-                        I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                        I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
+                    I_top_t, I_side_t, I_hand_t, I_top_tp1, I_side_tp1, I_hand_tp1, x_q_t, x_p_tp1 = model.estimate(
+                        # I_top.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step+1],
+                        # I_side.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step+1],
+                        # I_hand.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step+1],
+                        # I_top.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step],
+                        # I_side.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step],
+                        # I_hand.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step],
+                        # u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
+                        I_top.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                        I_side.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                        I_hand.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                        I_top.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
+                        I_side.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
+                        I_hand.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                         u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
 
                     all_positions.append(
                         x_q_t.to("cpu").detach().numpy()[0].tolist())
 
-                    visualizer.append(
-                        env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
+                    visualizer_top.append(
+                        # env.postprocess_observation(I_top.permute(1, 0, 4, 2, 3)[step].to(
+                        #     "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        # env.postprocess_observation(I_top_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                        #     0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        # np.array(all_positions)
+                        env.postprocess_observation(I_top.permute(1, 0, 2, 3, 4)[step].to(
                             "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
-                        env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                        env.postprocess_observation(I_top_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
                             0].transpose(1, 2, 0), cfg["bit_depth"]),
                         np.array(all_positions)
                     )
 
-                visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
-                visualizer.add_images(writer, epoch)
+                    visualizer_side.append(
+                        # env.postprocess_observation(I_side.permute(1, 0, 4, 2, 3)[step].to(
+                        #     "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        # env.postprocess_observation(I_side_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                        #     0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        # np.array(all_positions)
+                        env.postprocess_observation(I_side.permute(1, 0, 2, 3, 4)[step].to(
+                            "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        env.postprocess_observation(I_side_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                            0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        np.array(all_positions)
+                    )
+
+                    visualizer_hand.append(
+                        # env.postprocess_observation(I_hand.permute(1, 0, 4, 2, 3)[step].to(
+                        #     "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        # env.postprocess_observation(I_hand_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                        #     0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        # np.array(all_positions)
+                        env.postprocess_observation(I_hand.permute(1, 0, 2, 3, 4)[step].to(
+                            "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        env.postprocess_observation(I_hand_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                            0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        np.array(all_positions)
+                    )
+
+                visualizer_top.encode(save_video_path, "top" + f"{epoch}.{idx}.mp4")
+                visualizer_top.add_images(writer, epoch)
+                visualizer_side.encode(save_video_path, "side" + f"{epoch}.{idx}.mp4")
+                visualizer_side.add_images(writer, epoch)
+                visualizer_hand.encode(save_video_path, "hand" + f"{epoch}.{idx}.mp4")
+                visualizer_hand.add_images(writer, epoch)
                 print()
 
 

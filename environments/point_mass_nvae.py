@@ -95,8 +95,9 @@ class PointMass(base.Task):
       physics: An instance of `mujoco.Physics`.
     """
     # randomizers.randomize_limited_and_rotational_joints(physics, self.random)
-    physics.named.data.qpos["root_x"] = np.random.uniform(-0.1, 0.1)
-    physics.named.data.qpos["root_y"] = np.random.uniform(-0.1, 0.1)
+    physics.named.data.qpos["root_x"] = 0. #np.random.uniform(-0.1, 0.1)
+    physics.named.data.qpos["root_y"] = 0. #np.random.uniform(-0.1, 0.0)
+    physics.named.data.qpos["root_z"] = 0. #np.random.uniform(0.0, 0.0)
     if self._randomize_gains:
       dir1 = self.random.randn(2)
       dir1 /= np.linalg.norm(dir1)

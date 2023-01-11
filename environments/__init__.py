@@ -173,10 +173,14 @@ class ControlSuiteEnv():
     self.t += 1  # Increment internal timer
     done = state.last() or self.t == self.max_episode_length
 
-    observation = _images_to_observation(
-        self._env.physics.render(64, 64, camera_id=0), self.bit_depth)
+    obs1 = _images_to_observation(
+            self._env.physics.render(64, 64, camera_id=0), self.bit_depth)
+    obs2 = _images_to_observation(
+            self._env.physics.render(64, 64, camera_id=1), self.bit_depth)
+    obs3 = _images_to_observation(
+            self._env.physics.render(64, 64, camera_id=2), self.bit_depth)
 
-    return observation, state, reward, done
+    return obs1, obs2, obs3, state, reward, done
 
   def render(self):
     cv2.imshow('screen', self._env.physics.render(camera_id=0)[:, :, ::-1])

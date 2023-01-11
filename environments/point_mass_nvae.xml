@@ -3,7 +3,7 @@
   <include file="./common/visual.xml"/>
   <include file="./common/materials.xml"/>
 
-  <option timestep="0.02">
+  <option timestep="0.02" gravity="0 0 0">
     <flag contact="disable"/>
   </option>
 
@@ -14,7 +14,7 @@
 
   <worldbody>
     <light name="light" pos="0 0 1"/>
-    <camera name="fixed" pos="0 0 .75" quat="1 0 0 0"/>
+    <camera name="fixed" pos="0 0 .45" quat="1 0 0 0"/>
     <geom name="ground" type="plane" pos="0 0 0" size=".3 .3 .1" material="grid"/>
     <geom name="wall_x" type="plane" pos="-.3 0 .02" zaxis="1 0 0"  size=".02 .3 .02" material="decoration"/>
     <geom name="wall_y" type="plane" pos="0 -.3 .02" zaxis="0 1 0"  size=".3 .02 .02" material="decoration"/>
@@ -22,11 +22,14 @@
     <geom name="wall_neg_y" type="plane" pos="0 .3 .02" zaxis="0 -1 0"  size=".3 .02 .02" material="decoration"/>
 
     <body name="pointmass" pos="0 0 .01">
-      <camera name="cam0" pos="0 -0.3 0.3" xyaxes="1 0 0 0 0.7 0.7"/>
+      <camera name="cam0" pos="0 0 0.3" quat="1 0 0 0"/>
       <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0" />
       <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0" />
-      <geom name="pointmass" type="sphere" size=".02" material="self" mass=".3"/>
+      <joint name="root_z" type="slide"  pos="0 0 0" axis="0 0 1" />
+      <geom name="pointmass" type="sphere" size=".015" material="self" mass=".01"/>
     </body>
+
+    <camera name="cam1" pos="0 -0.3 0.1" quat="0.7 0.7 -0.0005628638 0.0005633122"/>
 
     <geom name="target" pos="0 0 .01" material="target" type="sphere" size=".015"/>
   </worldbody>
@@ -35,15 +38,23 @@
     <fixed name="t1">
       <joint joint="root_x" coef="1"/>
       <joint joint="root_y" coef="0"/>
+      <joint joint="root_z" coef="0"/>
     </fixed>
     <fixed name="t2">
       <joint joint="root_x" coef="0"/>
       <joint joint="root_y" coef="1"/>
+      <joint joint="root_z" coef="0"/>
+    </fixed>
+    <fixed name="t3">
+      <joint joint="root_x" coef="0"/>
+      <joint joint="root_y" coef="0"/>
+      <joint joint="root_z" coef="1"/>
     </fixed>
   </tendon>
 
   <actuator>
     <motor name="t1" tendon="t1"/>
     <motor name="t2" tendon="t2"/>
+    <motor name="t3" tendon="t3"/>
   </actuator>
 </mujoco>
