@@ -1,9 +1,10 @@
 batch_size: &batch_size 1
-epoch_size: 300
+epoch_size: 600
 check_epoch: 20
 bit_depth: &bit_depth 8
 device: &device cpu
-path: &path datasets/sample/point_mass
+# path: &path datasets/sample/point_mass
+path: &path datasets/unity
 
 
 weight:

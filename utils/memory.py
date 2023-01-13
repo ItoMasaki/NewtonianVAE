@@ -62,10 +62,15 @@ class ExperienceReplay():
 
     def load(self, path, filename):
         with np.load(f"{path}/{filename}", allow_pickle=True) as data:
-            self.colors_top = data["colors_top"][0:self.episode_size]
-            self.colors_side = data["colors_side"][0:self.episode_size]
-            self.colors_hand = data["colors_hand"][0:self.episode_size]
-            self.actions = data["actions"][0:self.episode_size]
+            # self.colors_top = data["colors_top"][0:self.episode_size]
+            # self.colors_side = data["colors_side"][0:self.episode_size]
+            # self.colors_hand = data["colors_hand"][0:self.episode_size]
+            # self.actions = data["actions"][0:self.episode_size]
+            print(data["I_top"].shape)
+            self.colors_top = data["I_top"][0:self.episode_size]
+            self.colors_side = data["I_side"][0:self.episode_size]
+            self.colors_hand = data["I_hand"][0:self.episode_size]
+            self.actions = data["action"][0:self.episode_size]
 
 def make_loader(cfg, mode):
     #==========================#
