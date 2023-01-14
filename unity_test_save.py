@@ -21,13 +21,13 @@ for num_episode in range(1):
     im_hand_array[num_episode] = batch_size
     for i in range(100):
         #   top_image
-        im_top_tmp = np.array(Image.open("datasets/test/top_image/image_000_" + str(i).zfill(4) + ".jpg"))
+        im_top_tmp = np.array(Image.open("datasets/unity_2/test/top_image/image_000_" + str(i).zfill(4) + ".jpg"))
 
         #   side image
-        im_side_tmp = np.array(Image.open("datasets/test/side_image/image_000_" + str(i).zfill(4) + ".jpg"))
+        im_side_tmp = np.array(Image.open("datasets/unity_2/test/side_image/image_000_" + str(i).zfill(4) + ".jpg"))
 
         #   hand image
-        im_hand_tmp = np.array(Image.open("datasets/test/hand_image/image_000_" + str(i).zfill(4) + ".jpg"))
+        im_hand_tmp = np.array(Image.open("datasets/unity_2/test/hand_image/image_000_" + str(i).zfill(4) + ".jpg"))
 
         im_top_array[num_episode][i] = torch.tensor(im_top_tmp)
         im_side_array[num_episode][i] = torch.tensor(im_side_tmp)
@@ -38,14 +38,22 @@ for num_episode in range(1):
 ### set action ###
 ##################
 #   load action file
-action_tmp = np.loadtxt("/home/admin_pc/NewtonianVAE/datasets/actions_test.txt")
+action_tmp = np.loadtxt("/home/admin_pc/NewtonianVAE/datasets/unity_2/actions_test.txt")
+action_tmp = torch.from_numpy(action_tmp)
+action_tmp = action_tmp.to(torch.float32)
+action_tmp = action_tmp / 100.0
+action_tmp = action_tmp.unsqueeze(0)
+# print(action_tmp)
+# print(action_tmp.min(), action_tmp.max())
+print(action_tmp.shape)
 
 #   (size)action (1, 100, 3)
-for num_episode in range(1):
-    action[num_episode] = batch_size
-    for i in range(100):
-        action[num_episode][i] = torch.tensor(action_tmp[i])
+# for num_episode in range(1):
+#     action[num_episode] = batch_size
+#     for i in range(100):
+#         action[num_episode][i] = torch.tensor(action_tmp[i])
+#         print(action[num_episode][i])
+
 
 #   save npz file
-np.savez("datasets/unity/test.npz", I_top=im_top_array, I_side=im_side_array, I_hand=im_hand_array, action=action)
-# a
+np.savez("datasets/unity_2/test.npz", I_top=im_top_array, I_side=im_side_array, I_hand=im_hand_array, action=action_tmp)
