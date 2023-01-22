@@ -7,6 +7,8 @@ from torch.nn import functional as F
 from pixyz import distributions as dist
 from pixyz.utils import epsilon
 
+from torchvision.models import resnet18
+from torchvision.models.resnet import ResNet18_Weights
 
 class Encoder(dist.Normal):
     """
@@ -18,30 +20,21 @@ class Encoder(dist.Normal):
 
         activation_func = getattr(nn, act_func_name)
 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(32, 64, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(64, 128, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(128, 256, 4, stride=2),
-            activation_func(),
-        )
+        self.encoder = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
 
         self.loc = nn.Sequential(
-            nn.Linear(1024, output_dim),
+            nn.Linear(1000, output_dim),
         )
 
         self.scale = nn.Sequential(
-            nn.Linear(1024, output_dim),
+            nn.Linear(1000, output_dim),
             nn.Softplus()
         )
 
     def forward(self, I_t: torch.Tensor) -> dict:
         feature = self.encoder(I_t)
-        B, C, W, H = feature.shape
-        feature = feature.reshape((B, C*W*H))
+        # B, C, W, H = feature.shape
+        # feature = feature.reshape((B, C*W*H))
 
         loc = self.loc(feature)
         scale = self.scale(feature) + epsilon()
@@ -59,36 +52,35 @@ class Decoder(dist.Normal):
 
         activation_func = getattr(nn, act_func_name)
 
-        self.loc = nn.Sequential(
-            nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
+        self.up_size_vector = nn.Sequential(
+            nn.Linear(2, 1000),
             activation_func(),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1),
-            activation_func(),
-            nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
         )
 
-        self.image_size = 64
-        a = np.linspace(-1, 1, self.image_size)
-        b = np.linspace(-1, 1, self.image_size)
-        x, y = np.meshgrid(a, b)
-        x = x.reshape(self.image_size, self.image_size, 1)
-        y = y.reshape(self.image_size, self.image_size, 1)
-        self.xy = np.concatenate((x, y), axis=-1)
+        self.loc = nn.Sequential(
+            nn.ConvTranspose2d(1000, 512, 3, stride=1),
+            activation_func(),
+            nn.ConvTranspose2d(512, 256, 6, stride=3),
+            activation_func(),
+            nn.ConvTranspose2d(256, 128, 5, stride=2),
+            activation_func(),
+            nn.ConvTranspose2d(128, 64, 3, stride=2),
+            activation_func(),
+            nn.ConvTranspose2d(64, 32, 3, stride=2),
+            activation_func(),
+            nn.ConvTranspose2d(32, 3, 4, stride=2),
+        )
 
         self.device = device
 
     def forward(self, x_t: torch.Tensor) -> dict:
         batchsize = len(x_t)
-        xy_tiled = torch.from_numpy(
-            np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
 
-        z_tiled = torch.repeat_interleave(
-            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
+        vector = self.up_size_vector(x_t)
 
-        z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
-        z_and_xy = z_and_xy.permute(0, 3, 2, 1)
+        reshaped_vector = vector.reshape((batchsize, 1000, 1, 1))
 
-        loc = self.loc(z_and_xy)
+        loc = self.loc(reshaped_vector)
 
         return {"loc": loc, "scale": .01}
 

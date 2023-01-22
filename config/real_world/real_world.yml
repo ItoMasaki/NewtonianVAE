@@ -1,8 +1,8 @@
 batch_size: &batch_size 1
 epoch_size: 50000 
-check_epoch: 200
+check_epoch: 2000
 bit_depth: &bit_depth 8
-device: &device cpu
+device: &device cuda:0
 path: &path datasets/real_world
 
 
@@ -23,7 +23,7 @@ model:
   clip_grad_norm: False
   clip_grad_value: False
   device: *device
-  use_amp: False
+  use_amp: True
 
   encoder_param:
     input_dim: 3
@@ -33,7 +33,7 @@ model:
   decoder_param:
     input_dim: 2
     output_dim: 3
-    act_func_name: LeakyReLU
+    act_func_name: ReLU
     device: *device
 
   transition_param:
@@ -68,7 +68,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: 1
+      batch_size: 8
       shuffle: True
       drop_last: False
       num_workers: 8
@@ -101,7 +101,7 @@ dataset:
     sequence_size: &test_sequence_size 20
     data:
       path: *path
-      filename: test.npz
+      filename: validation.npz
 
     memory:
       episode_size: *test_episode_size
