@@ -19,7 +19,7 @@ def main():
     # ================#
     parser = argparse.ArgumentParser(description='Collection dataset')
     parser.add_argument(
-        '--config', type=str, default='config/sample/train/point_mass.yml', help='config path ex. config/sample/check_correlation/point_mass.yml')
+        '--config', type=str, default='config/sample/point_mass.yml', help='config path ex. config/sample/check_correlation/point_mass.yml')
     args = parser.parse_args()
 
     with open(args.config) as file:
@@ -40,9 +40,9 @@ def main():
     for i in range(5000):
         observation, state = _env.reset()
 
-        observation, state, reward, done = _env.step(torch.zeros(2))
+        obs1, obs2, obs3, state, reward, done = _env.step(torch.zeros(3))
 
-        x_q_t = model.encoder.sample_mean({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :]})
+        x_q_t = model.x_moe.sample_mean({"I_top_t": obs1.permute(2, 0, 1)[np.newaxis, :, :, :], "I_side_t": obs2.permute(2, 0, 1)[np.newaxis, :, :, :], "I_hand_t": obs3.permute(2, 0, 1)[np.newaxis, :, :, :]})
 
         latent_position.append(x_q_t.to("cpu").detach().numpy()[0])
         observation_position.append(state.observation["position"])
@@ -58,6 +58,9 @@ def main():
     print(value[0, 1])
     value = np.corrcoef(
         all_observation_position[:, 1], all_latent_position[:, 1])
+    print(value[0, 1])
+    value = np.corrcoef(
+        all_observation_position[:, 2], all_latent_position[:, 2])
     print(value[0, 1])
 
     for idx in range(len(all_latent_position)):

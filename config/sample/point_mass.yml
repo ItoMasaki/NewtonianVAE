@@ -1,14 +1,14 @@
 batch_size: &batch_size 1
-epoch_size: 300
+epoch_size: 1000
 check_epoch: 20
 bit_depth: &bit_depth 8
 device: &device cpu
-path: &path datasets/sample/point_mass
+path: &path datasets/sample/point_mass/jan19_1630
 
 
 weight:
-  path: results/2022_12_18_22_11_30/weights
-  filename: 300.weight
+  path: results/2023_01_21_15_05_09/weights
+  filename: 600.weight
 
 
 environment:
@@ -53,7 +53,7 @@ model:
 
 dataset:
   train:
-    episode_size: &train_episode_size 10
+    episode_size: &train_episode_size 30
     sequence_size: &trin_sequence_size 100
 
     data:
@@ -75,7 +75,7 @@ dataset:
       pin_memory: True
 
   validation:
-    episode_size: &validation_episode_size 100
+    episode_size: &validation_episode_size 15
     sequence_size: &validation_sequence_size 100
 
     data:

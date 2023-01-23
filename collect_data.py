@@ -14,7 +14,7 @@ from environments import load, ControlSuiteEnv
 
 def main():
     parser = argparse.ArgumentParser(description='Collection dataset')
-    parser.add_argument('--config', type=str, default="config/sample/train/point_mass.yml",
+    parser.add_argument('--config', type=str, default="config/sample/point_mass.yml",
                         help='config path e.g. config/sample/collect_dataset/point_mass.yml')
     args = parser.parse_args()
 

@@ -73,7 +73,8 @@ class NewtonianVAE(Model):
         recon_loss_side = E(self.transition, LogProb(self.decoder2))
         recon_loss_hand = E(self.transition, LogProb(self.decoder3))
         # KL divergence
-        kl_loss = KL(self.x_top_t, self.transition)+KL(self.x_side_t, self.transition)+KL(self.x_hand_t, self.transition)+KL(self.x_topside_t, self.transition)+KL(self.x_sidehand_t, self.transition)+KL(self.x_handtop_t, self.transition)+KL(self.x_topsidehand_t, self.transition)+KL(self.phi, self.transition)
+        kl_loss = (1/8) * (KL(self.x_top_t, self.transition)+KL(self.x_side_t, self.transition)+KL(self.x_hand_t, self.transition)+KL(self.x_topside_t, self.transition)+KL(self.x_sidehand_t, self.transition)+KL(self.x_handtop_t, self.transition)+KL(self.x_topsidehand_t, self.transition)+KL(self.phi, self.transition))
+        # kl_loss = KL(self.x_moe, self.transition)
         # Step loss
         self.step_loss_top = (kl_loss - recon_loss_top).mean()
         self.step_loss_side = (kl_loss - recon_loss_side).mean()

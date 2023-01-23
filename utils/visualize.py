@@ -35,6 +35,7 @@ cmap = LinearSegmentedColormap("custom", cdict, 12)
 class Visualization:
     def __init__(self):
         fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(7, 7))
+        ax4 = fig.add_subplot(2,2,4,projection="3d")
 
         self.fig = fig
         self.ax1 = ax1
@@ -51,13 +52,15 @@ class Visualization:
         self.ax1.axis('off')
         self.ax2.set_title(r"$ \hat{I}_t $")
         self.ax2.axis('off')
-        self.ax4.set_title(r"$ trajectory $")
+        # self.ax3.set_title(r"$ trajectory $")
+        self.ax4.set_title(r"$ trajectory_3d $")
+        self.ax4.axis('off')
 
         art_1 = self.ax1.imshow(I_t)
         art_2 = self.ax2.imshow(rec_I_t)
         if points is not None:
             art_4 = self.ax4.scatter(
-                points[:, 0], points[:, 1], s=1., c=cmap(np.arange(0, len(points))/100))
+                points[:, 0], points[:, 1], points[:, 2], s=1., c=cmap(np.arange(0, len(points))/100))
 
             self.frames.append([art_1, art_2, art_4])
         else:
