@@ -7,7 +7,7 @@ path: &path datasets/sample/point_mass/jan19_1630
 
 
 weight:
-  path: results/2023_01_21_15_05_09/weights
+  path: results/2023_01_23_21_54_06/weights
   filename: 600.weight
 
 

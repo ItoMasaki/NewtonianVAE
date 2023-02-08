@@ -161,7 +161,7 @@ class ControlSuiteEnv():
   def reset(self):
     self.t = 0  # Reset internal timer
     state = self._env.reset()
-    return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), state
+    return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), _images_to_observation(self._env.physics.render(64, 64, camera_id=1), self.bit_depth), _images_to_observation(self._env.physics.render(64, 64, camera_id=2), self.bit_depth), state
 
   def step(self, action):
     action = action.detach().numpy()

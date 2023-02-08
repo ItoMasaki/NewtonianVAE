@@ -8,8 +8,8 @@ path: &path datasets/sample/point_mass/jan19_1630
 
 
 weight:
-  path: results/2022_12_18_22_11_30/weights
-  filename: 300.weight
+  path: results/2023_01_23_21_54_06/weights
+  filename: 600.weight
 
 
 #environment:
