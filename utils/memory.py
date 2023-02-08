@@ -61,6 +61,10 @@ class ExperienceReplay():
                 {"colors_top": self.colors_top, "colors_side": self.colors_side, "colors_hand": self.colors_hand, "actions": self.actions})
 
     def load(self, path, filename):
+        """
+        point-mass → colors_..., actions
+        unity → I_..., action
+        """
         with np.load(f"{path}/{filename}", allow_pickle=True) as data:
             self.colors_top = data["colors_top"][0:self.episode_size]
             self.colors_side = data["colors_side"][0:self.episode_size]

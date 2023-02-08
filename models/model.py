@@ -35,9 +35,11 @@ class NewtonianVAE(Model):
         self.encoder1 = Encoder1(**encoder_param).to(device)
         self.encoder2 = Encoder2(**encoder_param).to(device)
         self.encoder3 = Encoder3(**encoder_param).to(device)
+
         self.decoder1 = Decoder1(**decoder_param).to(device)
         self.decoder2 = Decoder2(**decoder_param).to(device)
         self.decoder3 = Decoder3(**decoder_param).to(device)
+
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
 
@@ -55,9 +57,11 @@ class NewtonianVAE(Model):
         self.x_top_t = dist.ProductOfNormal([self.encoder1])
         self.x_side_t = dist.ProductOfNormal([self.encoder2])
         self.x_hand_t = dist.ProductOfNormal([self.encoder3])
+
         self.x_topside_t = dist.ProductOfNormal([self.encoder1, self.encoder2])
         self.x_sidehand_t = dist.ProductOfNormal([self.encoder2, self.encoder3])
         self.x_handtop_t = dist.ProductOfNormal([self.encoder3, self.encoder1])
+
         self.x_topsidehand_t = dist.ProductOfNormal([self.encoder1, self.encoder2, self.encoder3])
         self.phi = dist.Normal(loc=torch.tensor(0.), scale=torch.tensor(1.), var=['x_t'], features_shape=[phi_dim], name='p_{1}')
 
@@ -72,9 +76,10 @@ class NewtonianVAE(Model):
         recon_loss_top = E(self.transition, LogProb(self.decoder1))
         recon_loss_side = E(self.transition, LogProb(self.decoder2))
         recon_loss_hand = E(self.transition, LogProb(self.decoder3))
+
         # KL divergence
         kl_loss = (1/8) * (KL(self.x_top_t, self.transition)+KL(self.x_side_t, self.transition)+KL(self.x_hand_t, self.transition)+KL(self.x_topside_t, self.transition)+KL(self.x_sidehand_t, self.transition)+KL(self.x_handtop_t, self.transition)+KL(self.x_topsidehand_t, self.transition)+KL(self.phi, self.transition))
-        # kl_loss = KL(self.x_moe, self.transition)
+
         # Step loss
         self.step_loss_top = (kl_loss - recon_loss_top).mean()
         self.step_loss_side = (kl_loss - recon_loss_side).mean()

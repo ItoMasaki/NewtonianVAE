@@ -10,7 +10,7 @@ from pixyz.utils import epsilon
 
 class Encoder1(dist.Normal):
     """
-      q(x_top_t | I_top_t) = N(x_top_t | I_top_t)
+      q(x_top_t | I_top_t) ~ N(x_top_t | I_top_t)
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str):
@@ -50,7 +50,7 @@ class Encoder1(dist.Normal):
 
 class Encoder2(dist.Normal):
     """
-      q(x_side_t | I_side_t) = N(x_side_t | I_side_t)
+      q(x_side_t | I_side_t) ~ N(x_side_t | I_side_t)
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str):
@@ -90,7 +90,7 @@ class Encoder2(dist.Normal):
 
 class Encoder3(dist.Normal):
     """
-      q(x_hand_t | I_hand_t) = N(x_hand_t | I_hand_t)
+      q(x_hand_t | I_hand_t) ~ N(x_hand_t | I_hand_t)
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str):
@@ -131,7 +131,7 @@ class Encoder3(dist.Normal):
 
 class Decoder1(dist.Normal):
     """
-      p(I_top_t | x_top_t) = N(I_top_t | x_top_t)
+      p(I_top_t | x_top_t) ~ N(I_top_t | x_top_t)
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
@@ -174,7 +174,7 @@ class Decoder1(dist.Normal):
 
 class Decoder2(dist.Normal):
     """
-      p(I_side_t | x_side_t) = N(I_side_t | x_side_t)
+      p(I_side_t | x_side_t) ~ N(I_side_t | x_side_t)
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
@@ -217,7 +217,7 @@ class Decoder2(dist.Normal):
 
 class Decoder3(dist.Normal):
     """
-      p(I_hand_t | x_hand_t) = N(I_hand_t | x_hand_t)
+      p(I_hand_t | x_hand_t) ~ N(I_hand_t | x_hand_t)
     """
 
     def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
