@@ -44,7 +44,7 @@ model:
     act_func_name: ReLU
     delta_time: *delta_time
     device: *device
-    use_data_efficiency: True
+    use_data_efficiency: False
 
   optimizer: Adam
   optimizer_params:

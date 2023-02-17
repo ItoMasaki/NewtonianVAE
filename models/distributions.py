@@ -154,8 +154,8 @@ class Velocity(dist.Deterministic):
         else:
             _A, _B, _C = torch.chunk(self.coefficient_ABC(combined_vector), 3, dim=-1)
             A = torch.diag_embed(_A)
-            B = -touch.exp(torch.diag_embed(_B))
-            C = torch.exp(torch.diag_embed(_C))
+            B = torch.diag_embed(-torch.exp(_B))
+            C = torch.diag_embed(torch.exp(_C))
 
         # Dynamics inspired by Newton's motion equation
         v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum(

@@ -22,7 +22,6 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
         batch_size = I.size()[0]
 
         if train_mode:
-            print(I.shape)
             mean_loss += model.train({"I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "u": u.to(
                 device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
         else:
@@ -123,40 +122,40 @@ def main():
             #==============#
             # Encode video #
             #==============#
-            # if epoch % cfg["check_epoch"] == 0:
-            #     #============#
-            #     # Test phase #
-            #     #============#
-            #     for idx, (I, u, p) in enumerate(test_loader):
+            if epoch % cfg["check_epoch"] == 0:
+                #============#
+                # Test phase #
+                #============#
+                for idx, (I, u, p) in enumerate(test_loader):
 
-            #         all_latent_position: list = []
-            #         all_observation_position: list = []
+                    all_latent_position: list = []
+                    all_observation_position: list = []
 
-            #         for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
+                    for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
-            #             I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
-            #                 I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step+1],
-            #                 I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step],
-            #                 u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
+                        I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
+                            I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                            I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
+                            u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
 
-            #             all_latent_position.append(
-            #                 x_q_t.to("cpu").detach().numpy()[0].tolist())
+                        all_latent_position.append(
+                            x_q_t.to("cpu").detach().numpy()[0].tolist())
 
-            #             all_observation_position.append(p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0])
+                        all_observation_position.append(p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0])
 
-            #             visualizer.append(
-            #                 env.postprocess_observation(I.permute(1, 0, 4, 2, 3)[step].to(
-            #                     "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
-            #                 env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
-            #                     0].transpose(1, 2, 0), cfg["bit_depth"]),
-            #                 np.array(all_latent_position)
-            #             )
+                        visualizer.append(
+                            env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
+                                "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
+                            env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                                0].transpose(1, 2, 0), cfg["bit_depth"]),
+                            np.array(all_latent_position)
+                        )
 
-            #         np.savez(f"{save_correlation_path}/{epoch}.{idx}", {'latent': all_latent_position, 'observation': all_observation_position})
+                    np.savez(f"{save_correlation_path}/{epoch}.{idx}", {'latent': all_latent_position, 'observation': all_observation_position})
 
-            #         visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
-            #         visualizer.add_images(writer, epoch)
-            #         print()
+                    visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
+                    visualizer.add_images(writer, epoch)
+                    print()
 
 
 if __name__ == "__main__":

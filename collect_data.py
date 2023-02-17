@@ -53,7 +53,7 @@ def main():
                 action = np.clip(action, -1, 1)
 
                 observation, state, reward, done = env.step(torch.from_numpy(action))
-                env.render()
+                # env.render()
 
                 images.append(observation.permute(2, 0, 1)[
                     np.newaxis, :, :, :])
@@ -64,14 +64,6 @@ def main():
 
         print()
         save_memory.save(save_path, save_filename)
-
-        # viz = visualize.Visualization()
-
-        # for idx in range(len(images)):
-        #     viz.append(postprocess_observation(images[idx][0].permute(1, 2, 0).numpy(), 8), postprocess_observation(images[idx][0].permute(1, 2, 0).numpy(), 8))
-
-        # viz.encode(save_path + "/videos", f"{mode}.mp4")
-
 
 
 if __name__ == "__main__":
