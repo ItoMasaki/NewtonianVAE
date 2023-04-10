@@ -1,20 +1,20 @@
 batch_size: &batch_size 8
 epoch_size: 300 
-check_epoch: 20
+check_epoch: 1
 bit_depth: &bit_depth 8
 device: &device cuda:0
-path: &path datasets/sample/point_mass_nvae
+path: &path datasets/sample/ycb_mass
 
 
 weight:
-  path: results/2022_12_18_22_11_30/weights
+  path: results/2023_04_10_14_43_51/weights
   filename: 300.weight
 
 
 environment:
-  domain_name: point_mass_nvae
+  domain_name: ycb_mass
   task_name: easy
-  max_episode_length: 1000
+  max_episode_length: 200
   bit_depth: 8
 
 
@@ -53,7 +53,7 @@ model:
 
 dataset:
   train:
-    episode_size: &train_episode_size 1000
+    episode_size: &train_episode_size 200
     sequence_size: &trin_sequence_size 100
 
     data:

@@ -7,8 +7,8 @@
 ====================================================== -©vk©-->
 <mujocoinclude>
     <asset>
-        <mesh name="035_power_drill" file="environments/YCB_sim/meshes/035_power_drill.msh" scale="1 1 1"/>
-        <texture name="035_power_drill" type="2d" file="environments/YCB_sim/textures/035_power_drill.png"/>
+        <mesh name="035_power_drill" file="environments/meshes/035_power_drill.msh" scale="1 1 1"/>
+        <texture name="035_power_drill" type="2d" file="environments/textures/035_power_drill.png"/>
         <material name="035_power_drill" texture="035_power_drill"/>
     </asset>
 </mujocoinclude>

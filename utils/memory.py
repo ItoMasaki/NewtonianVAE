@@ -32,9 +32,10 @@ class ExperienceReplay():
 
         return _images_to_observation(colors, self.bit_depth), actions, positions
 
-    def append(self, color, action, batch):
+    def append(self, color, action, position, batch):
         self.colors[batch] = postprocess_observation(color, self.bit_depth)
         self.actions[batch] = action
+        self.positions[batch] = position
 
     def reset(self):
         self.colors = np.empty(

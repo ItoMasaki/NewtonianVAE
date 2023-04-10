@@ -15,10 +15,12 @@
 
 """A collection of MuJoCo-based Reinforcement Learning environments."""
 
+import os
 import collections
 import inspect
 import itertools
 import cv2
+import random
 
 from dm_control.rl import control
 
@@ -41,6 +43,8 @@ from dm_control.suite import reacher
 from dm_control.suite import stacker
 from dm_control.suite import swimmer
 from dm_control.suite import walker
+
+from dm_control.suite import common
 
 from environments import reacher_nvae
 from environments import point_mass_nvae
@@ -160,6 +164,7 @@ class ControlSuiteEnv():
 
   def reset(self):
     self.t = 0  # Reset internal timer
+    self._env.physics.reload_from_xml_string(*self.get_model_and_assets())
     state = self._env.reset()
     return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), state
 
@@ -198,3 +203,9 @@ class ControlSuiteEnv():
   def sample_random_action(self):
     spec = self._env.action_spec()
     return torch.from_numpy(np.random.uniform(spec.minimum, spec.maximum, spec.shape))
+
+  def get_model_and_assets(self):
+    """Returns a tuple containing the model XML string and a dict of assets."""
+    object_files = ["mustard_bottle.xml", "tomato_soup_can.xml"]
+    object_file = random.choice(object_files)
+    return common.read_model(f'{os.path.abspath(".")}/environments/ycb_mass_xml/{object_file}'), common.ASSETS

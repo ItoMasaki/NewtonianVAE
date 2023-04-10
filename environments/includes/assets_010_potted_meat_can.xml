@@ -7,8 +7,8 @@
 ====================================================== -©vk©-->
 <mujocoinclude>
     <asset>
-        <mesh name="010_potted_meat_can" file="environments/YCB_sim/meshes/010_potted_meat_can.msh" scale="1 1 1"/>
-        <texture name="010_potted_meat_can" type="2d" file="environments/YCB_sim/textures/010_potted_meat_can.png"/>
+        <mesh name="010_potted_meat_can" file="environments/meshes/010_potted_meat_can.msh" scale="1 1 1"/>
+        <texture name="010_potted_meat_can" type="2d" file="environments/textures/010_potted_meat_can.png"/>
         <material name="010_potted_meat_can" texture="010_potted_meat_can"/>
     </asset>
 </mujocoinclude>

@@ -7,8 +7,8 @@
 ====================================================== -©vk©-->
 <mujocoinclude>
     <asset>
-        <mesh name="009_gelatin_box" file="environments/YCB_sim/meshes/009_gelatin_box.msh" scale="1 1 1"/>
-        <texture name="009_gelatin_box" type="2d" file="environments/YCB_sim/textures/009_gelatin_box.png"/>
+        <mesh name="009_gelatin_box" file="environments/meshes/009_gelatin_box.msh" scale="1 1 1"/>
+        <texture name="009_gelatin_box" type="2d" file="environments/textures/009_gelatin_box.png"/>
         <material name="009_gelatin_box" texture="009_gelatin_box"/>
     </asset>
 </mujocoinclude>

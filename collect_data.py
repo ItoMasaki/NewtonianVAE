@@ -49,7 +49,7 @@ def main():
             action = 0.
 
             for _ in range(sequence_size):
-                action += np.random.uniform(-0.1, 0.1, 2)
+                action += np.random.uniform(-0.01, 0.01, 2)
                 action = np.clip(action, -1, 1)
 
                 observation, state, reward, done = env.step(torch.from_numpy(action))
@@ -59,8 +59,10 @@ def main():
                     np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
 
+                positions.append(state.observation["position"][np.newaxis, :])
+
             save_memory.append(np.concatenate(images),
-                               np.concatenate(actions), episode)
+                               np.concatenate(actions), np.concatenate(positions), episode)
 
         print()
         save_memory.save(save_path, save_filename)

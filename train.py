@@ -138,10 +138,14 @@ def main():
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
 
-                        all_latent_position.append(
-                            x_q_t.to("cpu").detach().numpy()[0].tolist())
+                        latent_position = model.encoder.sample_mean(
+                                {"I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1]})
 
-                        all_observation_position.append(p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0])
+                        all_latent_position.append(
+                            latent_position.to("cpu").detach().numpy()[0].tolist())
+
+                        observation_position = p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0]
+                        all_observation_position.append(observation_position.to("cpu").detach().numpy()[0].tolist())
 
                         visualizer.append(
                             env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
@@ -152,6 +156,15 @@ def main():
                         )
 
                     np.savez(f"{save_correlation_path}/{epoch}.{idx}", {'latent': all_latent_position, 'observation': all_observation_position})
+
+                    correlation_X = np.corrcoef(
+                        np.array(all_observation_position)[:, 0], np.array(all_latent_position)[:, 0])
+                    correlation_Y = np.corrcoef(
+                        np.array(all_observation_position)[:, 1], np.array(all_latent_position)[:, 1])
+                    print(correlation_X[0, 1], correlation_Y[0, 1])
+
+                    writer.add_scalar('correlation/X', correlation_X[0, 1], epoch - 1)
+                    writer.add_scalar('correlation/Y', correlation_Y[0, 1], epoch - 1)
 
                     visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
                     visualizer.add_images(writer, epoch)

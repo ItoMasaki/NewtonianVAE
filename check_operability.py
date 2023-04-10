@@ -51,6 +51,7 @@ def main():
             #===================#
             observation, state, reward, done = _env.step(action.cpu())
             x_q_t = model.encoder.sample_mean({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"])})
+            reconstructed_image = model.decoder.sample_mean({"x_q_t": x_q_t})
 
             #============#
             # Get action #

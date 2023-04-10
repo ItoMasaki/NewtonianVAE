@@ -17,6 +17,7 @@
 
 import os
 import collections
+import random
 
 from dm_control import mujoco
 from dm_control.rl import control
@@ -33,7 +34,9 @@ SUITE = containers.TaggedTasks()
 
 def get_model_and_assets():
   """Returns a tuple containing the model XML string and a dict of assets."""
-  return common.read_model(f'{os.path.abspath(".")}/environments/ycb_mass.xml'), common.ASSETS
+  object_files = ["mustard_bottle.xml"]
+  object_file = random.choice(object_files)
+  return common.read_model(f'{os.path.abspath(".")}/environments/ycb_mass_xml/{object_file}'), common.ASSETS
 
 
 @SUITE.add('benchmarking', 'easy')
