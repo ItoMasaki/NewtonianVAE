@@ -52,6 +52,7 @@ class Visualization:
         self.ax2.set_title(r"$ \hat{I}_t $")
         self.ax2.axis('off')
         self.ax4.set_title(r"$ trajectory $")
+        self.ax4.set_aspect('equal', adjustable='datalim')
 
         art_1 = self.ax1.imshow(I_t)
         art_2 = self.ax2.imshow(rec_I_t)

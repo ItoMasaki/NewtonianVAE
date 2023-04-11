@@ -64,7 +64,6 @@ def main():
     validation_loader = memory.make_loader(cfg, "validation")
     test_loader = memory.make_loader(cfg, "test")
 
-    visualizer = visualize.Visualization()
     writer = SummaryWriter(comment="NewtonianVAE")
 
     #==============#
@@ -123,6 +122,7 @@ def main():
             # Encode video #
             #==============#
             if epoch % cfg["check_epoch"] == 0:
+                visualizer = visualize.Visualization()
                 #============#
                 # Test phase #
                 #============#

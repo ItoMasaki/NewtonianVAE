@@ -27,22 +27,22 @@ class NewtonianVAE(Model):
                  device: str = "cuda",
                  use_amp: bool = False):
 
-        # -------------------------#
+        #-------------------------#
         # Define models           #
-        # -------------------------#
+        #-------------------------#
         self.encoder = Encoder(**encoder_param).to(device)
         self.decoder = Decoder(**decoder_param).to(device)
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
 
-        # -------------------------#
+        #-------------------------#
         # Define hyperparams      #
-        # -------------------------#
+        #-------------------------#
         beta = Parameter("beta")
 
-        # -------------------------#
+        #-------------------------#
         # Define loss functions   #
-        # -------------------------#
+        #-------------------------#
         recon_loss = E(self.transition, LogProb(self.decoder))
         kl_loss = KL(self.encoder, self.transition)
         self.loss_cls = (beta*kl_loss - recon_loss).mean()
