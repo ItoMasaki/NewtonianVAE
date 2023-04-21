@@ -123,13 +123,14 @@ def main():
             #==============#
             if epoch % cfg["check_epoch"] == 0:
                 visualizer = visualize.Visualization()
+                all_latent_position: list = []
+                all_observation_position: list = []
+
                 #============#
                 # Test phase #
                 #============#
                 for idx, (I, u, p) in enumerate(test_loader):
 
-                    all_latent_position: list = []
-                    all_observation_position: list = []
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
@@ -157,18 +158,19 @@ def main():
 
                     np.savez(f"{save_correlation_path}/{epoch}.{idx}", {'latent': all_latent_position, 'observation': all_observation_position})
 
-                    correlation_X = np.corrcoef(
-                        np.array(all_observation_position)[:, 0], np.array(all_latent_position)[:, 0])
-                    correlation_Y = np.corrcoef(
-                        np.array(all_observation_position)[:, 1], np.array(all_latent_position)[:, 1])
-                    print(correlation_X[0, 1], correlation_Y[0, 1])
 
-                    writer.add_scalar('correlation/X', correlation_X[0, 1], epoch - 1)
-                    writer.add_scalar('correlation/Y', correlation_Y[0, 1], epoch - 1)
+                visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
+                visualizer.add_images(writer, epoch)
+                print()
 
-                    visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
-                    visualizer.add_images(writer, epoch)
-                    print()
+                correlation_X = np.corrcoef(
+                    np.array(all_observation_position)[:, 0], np.array(all_latent_position)[:, 0])
+                correlation_Y = np.corrcoef(
+                    np.array(all_observation_position)[:, 1], np.array(all_latent_position)[:, 1])
+                print(correlation_X[0, 1], correlation_Y[0, 1])
+
+                writer.add_scalar('correlation/X', correlation_X[0, 1], epoch - 1)
+                writer.add_scalar('correlation/Y', correlation_Y[0, 1], epoch - 1)
 
 
 if __name__ == "__main__":

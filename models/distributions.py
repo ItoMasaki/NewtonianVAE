@@ -65,6 +65,7 @@ class Decoder(dist.Normal):
             nn.Conv2d(64, 64, 3, stride=1, padding=1),
             activation_func(),
             nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
+            nn.Tanh()
         )
 
         self.image_size = 64
@@ -88,7 +89,7 @@ class Decoder(dist.Normal):
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
 
-        loc = self.loc(z_and_xy)
+        loc = self.loc(z_and_xy)/2.
 
         return {"loc": loc, "scale": .01}
 

@@ -41,6 +41,7 @@ def main():
         print(f"Step {i} / 500", end="\r")
 
         observation, state = _env.reset()
+        # _env.render()
 
         observation, state, reward, done = _env.step(torch.zeros(2))
         
@@ -63,9 +64,9 @@ def main():
     print(value[0, 1])
 
     for idx in range(len(all_latent_position)):
-        color = list(colorsys.hsv_to_rgb((all_observation_position[idx, 0] + 0.1)*2.5, (all_observation_position[idx, 1] + 0.1)*5.0, 0.5))
+        color = list(colorsys.hsv_to_rgb((all_observation_position[idx, 0] + 0.2)*0.25, (all_observation_position[idx, 1] + 0.2)*0.5, 0.5))
         plt.scatter(all_latent_position[idx, 0],
-                    all_latent_position[idx, 1], color=color, s=2)
+                    all_latent_position[idx, 1], color=color, s=5)
 
     plt.show()
     # plt.savefig("test")

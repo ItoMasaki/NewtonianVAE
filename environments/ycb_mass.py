@@ -97,8 +97,8 @@ class PointMass(base.Task):
     Args:
       physics: An instance of `mujoco.Physics`.
     """
-    physics.named.data.qpos["root_x"] = np.random.uniform(-0.1, 0.1)
-    physics.named.data.qpos["root_y"] = np.random.uniform(-0.1, 0.1)
+    physics.named.data.qpos["root_x"] = np.random.uniform(-.2, .2)
+    physics.named.data.qpos["root_y"] = np.random.uniform(-.2, .2)
     # physics.named.data.qpos["shoulder"] = np.random.uniform(-3., 3.)
     super().initialize_episode(physics)
 
