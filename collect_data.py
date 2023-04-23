@@ -43,6 +43,7 @@ def main():
         for episode in tqdm(range(episode_size)):
             time_step = env.reset()
 
+            labels = np.array([time_step[2]]*sequence_size).reshape(-1, 1)
             images = []
             actions = []
             positions = []
@@ -62,7 +63,7 @@ def main():
                 positions.append(state.observation["position"][np.newaxis, :])
 
             save_memory.append(np.concatenate(images),
-                               np.concatenate(actions), np.concatenate(positions), episode)
+                               np.concatenate(actions), np.concatenate(positions), labels, episode)
 
         print()
         save_memory.save(save_path, save_filename)

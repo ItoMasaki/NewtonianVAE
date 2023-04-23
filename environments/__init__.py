@@ -164,9 +164,10 @@ class ControlSuiteEnv():
 
   def reset(self):
     self.t = 0  # Reset internal timer
-    self._env.physics.reload_from_xml_string(*self.get_model_and_assets())
+    number, assets = self.get_model_and_assets()
+    self._env.physics.reload_from_xml_string(*assets)
     state = self._env.reset()
-    return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), state
+    return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), state, number
 
   def step(self, action):
     action = action.detach().numpy()
@@ -206,6 +207,9 @@ class ControlSuiteEnv():
 
   def get_model_and_assets(self):
     """Returns a tuple containing the model XML string and a dict of assets."""
-    object_files = ["mustard_bottle.xml", "tomato_soup_can.xml"]
-    object_file = random.choice(object_files)
-    return common.read_model(f'{os.path.abspath(".")}/environments/ycb_mass_xml/{object_file}'), common.ASSETS
+    object_files = {
+            0: "mustard_bottle.xml",
+            1: "tomato_soup_can.xml"}
+    object_file_number = random.choice(list(object_files.keys()))
+    object_file = object_files[object_file_number]
+    return object_file_number, [common.read_model(f'{os.path.abspath(".")}/environments/ycb_mass_xml/{object_file}'), common.ASSETS]

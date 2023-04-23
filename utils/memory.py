@@ -21,6 +21,8 @@ class ExperienceReplay():
             (episode_size, sequence_size, action_size), dtype=np.float32)
         self.positions = np.empty(
             (episode_size, sequence_size, action_size), dtype=np.float32)
+        self.labels = np.empty(
+            (episode_size, sequence_size, 1), dtype=np.float32)
 
     def __len__(self):
         return len(self.actions)
@@ -29,13 +31,15 @@ class ExperienceReplay():
         colors = self.colors[index]
         actions = torch.from_numpy(self.actions[index]).float()
         positions = torch.from_numpy(self.positions[index]).float()
+        labels = torch.from_numpy(self.labels[index]).float()
 
-        return _images_to_observation(colors, self.bit_depth), actions, positions
+        return _images_to_observation(colors, self.bit_depth), actions, positions, labels
 
-    def append(self, color, action, position, batch):
+    def append(self, color, action, position, label, batch):
         self.colors[batch] = postprocess_observation(color, self.bit_depth)
         self.actions[batch] = action
         self.positions[batch] = position
+        self.labels[batch] = label
 
     def reset(self):
         self.colors = np.empty(
@@ -44,6 +48,8 @@ class ExperienceReplay():
             (self.episode_size, self.sequence_size, self.action_size), dtype=np.float32)
         self.positions = np.empty(
             (episode_size, sequence_size, action_size), dtype=np.float32)
+        self.labels = np.empty(
+            (episode_size, sequence_size, 1), dtype=np.float32)
 
     def save(self, path, filename):
         try:
@@ -52,13 +58,14 @@ class ExperienceReplay():
             pass
 
         np.savez(f"{path}/{filename}", **
-                 {"colors": self.colors, "actions": self.actions, "positions": self.positions})
+                 {"colors": self.colors, "actions": self.actions, "positions": self.positions, "labels": self.labels})
 
     def load(self, path, filename):
         with np.load(f"{path}/{filename}", allow_pickle=True) as data:
             self.colors = data["colors"][0:self.episode_size]
             self.actions = data["actions"][0:self.episode_size]
             self.positions = data["positions"][0:self.episode_size]
+            self.labels = data["labels"][0:self.episode_size]
 
 def make_loader(cfg, mode):
     #==========================#

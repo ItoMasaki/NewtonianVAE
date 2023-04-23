@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader
 from matplotlib import pyplot as plt
 from matplotlib import animation
 
-from models import NewtonianVAE
+from models import ConditionalNewtonianVAE
 from utils import memory, env
 from environments import load, ControlSuiteEnv
 
@@ -33,13 +33,13 @@ def main():
     #================#
     # Define model   #
     #================#
-    model = NewtonianVAE(**cfg["model"])
+    model = ConditionalNewtonianVAE(**cfg["model"])
     model.load(**cfg["weight"])
 
     observation_position = []
     latent_position = []
 
-    fig = plt.figure(figsize = (10,10))
+    fig = plt.figure(figsize = (10,5))
 
     _x_yello = []
     _y_yello = []
@@ -52,8 +52,10 @@ def main():
 
     frames = []
 
-    x_lim = [-2, 2]
-    y_lim = [-2, 2]
+    length = 0.2
+
+    x_lim = [-length, length]
+    y_lim = [-length, length]
 
     # 色範囲の指定
     lower_yello = np.array([207, 150, 65], dtype=np.uint8)
@@ -62,11 +64,13 @@ def main():
     lower_brown = np.array([75, 65, 58], dtype=np.uint8)
     upper_brown = np.array([96, 79, 80], dtype=np.uint8)
 
+    label = torch.eye(2)[1].cuda().unsqueeze(0)
+
     for i in np.linspace(*x_lim, 40):
         for j in np.linspace(*y_lim, 40):
 
             x_q_t = torch.Tensor([[i, j]])
-            _image = model.decoder.sample_mean({"x_t": x_q_t.cuda()})
+            _image = model.decoder.sample_mean({"x_t": x_q_t.cuda(), "y_t": label})
             image = env.postprocess_observation(_image.cpu().detach().numpy(), 8).squeeze().transpose(1, 2, 0)
 
             # 色範囲内のピクセルを判定
@@ -86,8 +90,9 @@ def main():
 
             plt.clf()
 
-            ax1 = fig.add_subplot(2, 1, 1)
-            ax2 = fig.add_subplot(2, 1, 2)
+            ax1 = fig.add_subplot(1, 2, 1)
+            ax2 = fig.add_subplot(1, 2, 2)
+            ax2.set_aspect('equal', adjustable='datalim')
 
             ax1.imshow(image)
 
@@ -98,7 +103,7 @@ def main():
             ax2.set_xlim(*x_lim)
             ax2.set_ylim(*y_lim)
 
-            plt.pause(0.01)
+            plt.pause(0.0001)
 
     plt.show()
 

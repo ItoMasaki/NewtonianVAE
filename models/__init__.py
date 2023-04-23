@@ -1,1 +1,1 @@
-from models.model import NewtonianVAE
+from models.model import ConditionalNewtonianVAE

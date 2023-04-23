@@ -10,10 +10,15 @@ from pixyz.models import Model
 
 from models.distributions import Encoder, Decoder, Transition, Velocity
 
+# from distributions import Encoder, Decoder, Transition, Velocity
+# import argparse
+# import yaml
+# import pprint
+
 torch.backends.cudnn.benchmark = True
 
 
-class NewtonianVAE(Model):
+class ConditionalNewtonianVAE(Model):
     def __init__(self,
                  encoder_param: dict = {},
                  decoder_param: dict = {},
@@ -72,6 +77,7 @@ class NewtonianVAE(Model):
 
         I = input_var_dict["I"]
         u = input_var_dict["u"]
+        y = input_var_dict["y"]
         beta = input_var_dict["beta"]
 
         total_loss = 0.
@@ -79,12 +85,12 @@ class NewtonianVAE(Model):
         T, B, C = u.shape
         
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-        x_q_tn1 = self.encoder.sample({"I_t": I[0]}, reparam=True)["x_t"]
+        x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y[0]}, reparam=True)["x_t"]
 
         for step in range(1, T-1):
 
             # x^q_{t} ~ p(x^q_{t} | I_{t})
-            x_q_t = self.encoder.sample({"I_t": I[step]}, reparam=True)["x_t"]
+            x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y[step]}, reparam=True)["x_t"]
 
             # v_t = (x^q_{t} - x^q_{t-1})/dt
             v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -93,7 +99,7 @@ class NewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'beta': beta})
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], "y_t": y[step+1], 'beta': beta})
 
             total_loss += step_loss
 
@@ -136,20 +142,20 @@ class NewtonianVAE(Model):
 
         return loss.item()
 
-    def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor):
+    def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor, y_t: torch.Tensor):
         self.distributions.eval()
 
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
 
                 # x^q_{t-1} ~ p(x^q_{t-1) | I_{t-1))
-                x_q_tn1 = self.encoder.sample_mean({"I_t": I_tn1})
+                x_q_tn1 = self.encoder.sample_mean({"I_t": I_tn1, "y_t": y_t})
 
                 # x^q_t ~ p(x^q_t | I_t)
-                x_q_t = self.encoder.sample_mean({"I_t": I_t})
+                x_q_t = self.encoder.sample_mean({"I_t": I_t, "y_t": y_t})
 
                 # p(I_t | x_t)
-                I_t = self.decoder.sample_mean({"x_t": x_q_t})
+                I_t = self.decoder.sample_mean({"x_t": x_q_t, "y_t": y_t})
 
                 # v_t = (x^q_t - x^q_{t-1})/dt
                 v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -162,7 +168,7 @@ class NewtonianVAE(Model):
                     {"x_tn1": x_q_t, "v_t": v_tp1})
 
                 # p(I_{t+1} | x_{t+1})
-                I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1})
+                I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1, "y_t": y_t})
 
         return I_t, I_tp1, x_q_t, x_p_tp1
 
@@ -197,3 +203,27 @@ class NewtonianVAE(Model):
 
         self.optimizer.load_state_dict(torch.load(
             f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['optimizer_state_dict'])
+
+def main():
+    parser = argparse.ArgumentParser(description='Collection dataset')
+    parser.add_argument('--config', type=str, default="config/sample/train/point_mass.yml",
+                        help='config path ex. config/sample/train/point_mass.yml')
+    args = parser.parse_args()
+
+    with open(args.config) as file:
+        cfg = yaml.safe_load(file)
+        pprint.pprint(cfg)
+
+    model = ConditionalNewtonianVAE(**cfg['model'])
+    print(model)
+
+    I = torch.randn(300, 1, 3, 64, 64).cuda()
+    u = torch.randn(300, 1, 2).cuda()
+    y = torch.randn(300, 1, 2).cuda()
+
+    loss = model.train({"I": I, "u": u, "y": y, "beta": 1.})
+    print(loss)
+
+
+if __name__ == "__main__":
+    main()

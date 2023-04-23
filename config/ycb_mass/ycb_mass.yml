@@ -7,8 +7,8 @@ path: &path datasets/sample/ycb_mass
 
 
 weight:
-  path: results/2023_04_12_11_11_17/weights
-  filename: 250.weight
+  path: results/2023_04_22_23_22_53/weights
+  filename: 219.weight
 
 
 environment:
@@ -23,18 +23,19 @@ model:
   clip_grad_norm: False
   clip_grad_value: False
   device: *device
-  use_amp: True
+  use_amp: False
 
   encoder_param:
     input_dim: 3
+    label_dim: 2
     output_dim: 2
-    act_func_name: ReLU
+    activate_func: ReLU
 
   decoder_param:
     input_dim: 2
+    label_dim: 2
     output_dim: 3
-    act_func_name: LeakyReLU
-    device: *device
+    activate_func: LeakyReLU
 
   transition_param:
     delta_time: *delta_time

@@ -11,22 +11,29 @@ from tqdm import tqdm
 import shutil
 import yaml
 
-from models import NewtonianVAE
+from models import ConditionalNewtonianVAE
 from utils import visualize, memory, env
 
 
 def data_loop(epoch, loader, model, device, beta, train_mode=False):
     mean_loss = 0
 
-    for batch_idx, (I, u, _) in enumerate(tqdm(loader)):
+    for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
+        label = torch.eye(2)[label.int()].to(device, non_blocking=True).squeeze(2)
         batch_size = I.size()[0]
 
         if train_mode:
-            mean_loss += model.train({"I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "u": u.to(
-                device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
+            mean_loss += model.train({
+                "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
+                "y": label.to(device, non_blocking=True).permute(1, 0, 2),
+                "beta": beta}) * batch_size
         else:
-            mean_loss += model.test({"I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4), "u": u.to(
-                device, non_blocking=True).permute(1, 0, 2), "beta": beta}) * batch_size
+            mean_loss += model.test({
+                "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                "u": u.to(device, non_blocking=True).permute(1, 0, 2),
+                "y": label.to(device, non_blocking=True).permute(1, 0, 2),
+                "beta": beta}) * batch_size
 
     mean_loss /= len(loader.dataset)
 
@@ -69,7 +76,7 @@ def main():
     #==============#
     # Define model #
     #==============#
-    model = NewtonianVAE(**cfg["model"])
+    model = ConditionalNewtonianVAE(**cfg["model"])
     print(model)
 
 
@@ -129,7 +136,9 @@ def main():
                 #============#
                 # Test phase #
                 #============#
-                for idx, (I, u, p) in enumerate(test_loader):
+                for idx, (I, u, p, label) in enumerate(test_loader):
+
+                    label = torch.eye(2)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
 
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
@@ -137,10 +146,13 @@ def main():
                         I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
-                            u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
+                            u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
+                            label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
 
-                        latent_position = model.encoder.sample_mean(
-                                {"I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1]})
+
+                        latent_position = model.encoder.sample_mean({
+                            "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                            "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1]})
 
                         all_latent_position.append(
                             latent_position.to("cpu").detach().numpy()[0].tolist())

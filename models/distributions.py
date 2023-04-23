@@ -8,15 +8,16 @@ from pixyz import distributions as dist
 from pixyz.utils import epsilon
 
 
+
 class Encoder(dist.Normal):
     """
-      q(x_t | I_t) = N(x_t | I_t)
+        q(x_t | I_t, y_t) = Normal(x_t | I_t, y_t)
     """
 
-    def __init__(self, input_dim: int, output_dim: int, act_func_name: str):
-        super().__init__(var=["x_t"], cond_var=["I_t"], name="q")
+    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
+        super().__init__(var=["x_t"], cond_var=["I_t", "y_t"], name="q")
 
-        activation_func = getattr(nn, act_func_name)
+        activation_func = getattr(nn, activate_func)
 
         self.encoder = nn.Sequential(
             nn.Conv2d(3, 32, 4, stride=2),
@@ -30,37 +31,39 @@ class Encoder(dist.Normal):
         )
 
         self.loc = nn.Sequential(
-            nn.Linear(1024, output_dim),
+            nn.Linear(1024 + label_dim, output_dim),
         )
 
         self.scale = nn.Sequential(
-            nn.Linear(1024, output_dim),
+            nn.Linear(1024 + label_dim, output_dim),
             nn.Softplus()
         )
 
-    def forward(self, I_t: torch.Tensor) -> dict:
-        feature = self.encoder(I_t)
-        B, C, W, H = feature.shape
-        feature = feature.reshape((B, C*W*H))
+    def forward(self, I_t: torch.Tensor, y_t: torch.Tensor) -> dict:
+        h = self.encoder(I_t)
+        B, C, W, H = h.shape
+        h = h.reshape((B, C*W*H))
 
-        loc = self.loc(feature)
-        scale = self.scale(feature) + epsilon()
+        h = torch.cat((h, y_t), dim=1)
+
+        loc = self.loc(h)
+        scale = self.scale(h)
 
         return {"loc": loc, "scale": scale}
 
 
 class Decoder(dist.Normal):
     """
-      p(I_t | x_t) = N(I_t | x_t)
+        p(I_t | x_t, y_t) = Bernoulli(I_t | x_t, y_t)
     """
 
-    def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
-        super().__init__(var=["I_t"], cond_var=["x_t"])
+    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
+        super().__init__(var=["I_t"], cond_var=["x_t", "y_t"])
 
-        activation_func = getattr(nn, act_func_name)
+        activation_func = getattr(nn, activate_func)
 
         self.loc = nn.Sequential(
-            nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
+            nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
             activation_func(),
             nn.Conv2d(64, 64, 3, stride=1, padding=1),
             activation_func(),
@@ -76,22 +79,29 @@ class Decoder(dist.Normal):
         y = y.reshape(self.image_size, self.image_size, 1)
         self.xy = np.concatenate((x, y), axis=-1)
 
-        self.device = device
+    def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
+        device = x_t.device
 
-    def forward(self, x_t: torch.Tensor) -> dict:
+        x_t = torch.cat((x_t, y_t), dim=1)
+
+        # h = self.up_feature(h)
+        # h = h.reshape((h.shape[0], 256, 2, 2))
+
+        # loc = self.loc(h)/2
+
         batchsize = len(x_t)
         xy_tiled = torch.from_numpy(
-            np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(self.device)
+            np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(device)
 
         z_tiled = torch.repeat_interleave(
-            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 2)
+            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 4)
 
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
 
         loc = self.loc(z_and_xy)/2.
 
-        return {"loc": loc, "scale": .01}
+        return {"loc": loc, "scale": 1.}
 
 
 class Transition(dist.Normal):
