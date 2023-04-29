@@ -17,6 +17,9 @@ import cv2
 
 
 def main():
+
+    number = 0
+
     #================#
     # Load yaml file #
     #================#
@@ -52,7 +55,7 @@ def main():
 
     frames = []
 
-    length = 0.2
+    length = 0.6
 
     x_lim = [-length, length]
     y_lim = [-length, length]
@@ -64,7 +67,7 @@ def main():
     lower_brown = np.array([75, 65, 58], dtype=np.uint8)
     upper_brown = np.array([96, 79, 80], dtype=np.uint8)
 
-    label = torch.eye(2)[1].cuda().unsqueeze(0)
+    label = torch.eye(8)[number].cuda().unsqueeze(0)
 
     for i in np.linspace(*x_lim, 40):
         for j in np.linspace(*y_lim, 40):

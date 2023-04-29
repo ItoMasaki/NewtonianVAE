@@ -79,6 +79,8 @@ class Decoder(dist.Normal):
         y = y.reshape(self.image_size, self.image_size, 1)
         self.xy = np.concatenate((x, y), axis=-1)
 
+        self.z_dim = input_dim + label_dim
+
     def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         device = x_t.device
 
@@ -94,7 +96,7 @@ class Decoder(dist.Normal):
             np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(device)
 
         z_tiled = torch.repeat_interleave(
-            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, 4)
+            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, self.z_dim)
 
         z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)

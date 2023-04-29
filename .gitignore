@@ -136,3 +136,6 @@ runs
 
 # datasets
 datasets
+
+# video data
+*.mp4

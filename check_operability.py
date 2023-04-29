@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 from tqdm import tqdm
 
-from models import NewtonianVAE
+from models import ConditionalNewtonianVAE
 from utils import env
 from environments import load, ControlSuiteEnv
 
@@ -26,37 +26,51 @@ def main():
         pprint.pprint(cfg)
 
 
-    # ================#
+    #================#
     # Define model   #
-    # ================#
-    model = NewtonianVAE(**cfg["model"])
+    #================#
+    model = ConditionalNewtonianVAE(**cfg["model"])
     model.load(**cfg["weight"])
 
-    for episode in tqdm(range(10)):
+    for episode in tqdm(range(30)):
         frames = []
         #==================#
         # Get target image #
         #==================#
         _env = ControlSuiteEnv(**cfg["environment"])
         time_step = _env.reset()
+
+        number = time_step[2]
+        label = torch.eye(8)[number].cuda().unsqueeze(0)
+
         target_observation, state, reward, done = _env.step(torch.zeros(1, 2))
-        target_x_q_t = model.encoder.sample_mean({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"])})
+        target_x_q_t = model.encoder.sample_mean({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
+            "y_t": label})
 
         _env = ControlSuiteEnv(**cfg["environment"])
-        time_step = _env.reset() 
+        time_step = _env.reset()
+        
+        number = time_step[2]
+        label = torch.eye(8)[number].cuda().unsqueeze(0)
+
         action = torch.zeros(1, 2)
         for _ in range(200):
             #===================#
             # Get current image #
             #===================#
             observation, state, reward, done = _env.step(action.cpu())
-            x_q_t = model.encoder.sample_mean({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"])})
-            reconstructed_image = model.decoder.sample_mean({"x_q_t": x_q_t})
+
+            x_q_t = model.encoder.sample_mean({
+                "I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
+                "y_t": label})
+            reconstructed_image = model.decoder.sample_mean({"x_t": x_q_t, "y_t": label})
 
             #============#
             # Get action #
             #============#
-            action = target_x_q_t - x_q_t
+            action = (target_x_q_t - x_q_t).detach()
+
+            # action = -torch.flip(action, dims=[1])
 
             art1 = axis1.imshow(env.postprocess_observation(target_observation.detach().numpy(), 8))
             art2 = axis2.imshow(env.postprocess_observation(observation.detach().numpy(), 8))
