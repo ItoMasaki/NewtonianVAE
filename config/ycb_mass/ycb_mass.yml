@@ -7,8 +7,8 @@ path: &path datasets/ycb_mass
 
 
 weight:
-  path: results/2023_04_28_18_21_26/weights
-  filename: 300.weight
+  path: results/2023_04_30_19_24_23/weights
+  filename: 140.weight
 
 
 environment:
@@ -27,13 +27,13 @@ model:
 
   encoder_param:
     input_dim: 3
-    label_dim: 8
+    label_dim: 10
     output_dim: 2
     activate_func: ReLU
 
   decoder_param:
     input_dim: 2
-    label_dim: 8
+    label_dim: 10
     output_dim: 3
     activate_func: LeakyReLU
 
@@ -69,7 +69,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: 4
+      batch_size: 5
       shuffle: True
       drop_last: False
       num_workers: 8

@@ -19,7 +19,7 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
     mean_loss = 0
 
     for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
-        label = torch.eye(8)[label.int()].to(device, non_blocking=True).squeeze(2)
+        label = torch.eye(10)[label.int()].to(device, non_blocking=True).squeeze(2)
         batch_size = I.size()[0]
 
         if train_mode:
@@ -139,7 +139,7 @@ def main():
                 #============#
                 for idx, (I, u, p, label) in enumerate(test_loader):
 
-                    label = torch.eye(8)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
+                    label = torch.eye(10)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
 
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):

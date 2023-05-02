@@ -41,7 +41,7 @@ def main():
         print(f"Step {i} / 500", end="\r")
 
         observation, state, number = _env.reset()
-        label = torch.eye(8)[number].cuda().unsqueeze(0)
+        label = torch.eye(10)[number].cuda().unsqueeze(0)
         # _env.render()
 
         observation, state, reward, done = _env.step(torch.zeros(2))
