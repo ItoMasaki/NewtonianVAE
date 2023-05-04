@@ -175,3 +175,32 @@ class Velocity(dist.Deterministic):
             "ijk,ik->ik", B, v_tn1) + torch.einsum("ijk,ik->ik", C, u_tn1))
 
         return {"v_t": v_t}
+
+
+class LabelEncoder(dist.Categorical):
+    def __init__(self, label_dim: int, activation_func_name: str):
+        super().__init__(var=["y_t"], cond_var=["I_t"])
+
+        activation_func = getattr(nn, activation_func_name)
+
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 32, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(32, 64, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(64, 128, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(128, 256, 4, stride=2),
+            activation_func(),
+        )
+
+        self.output_probs = nn.Sequential(
+            nn.Linear(1024, label_dim),
+            nn.Sigmoid()
+        )
+
+    def forward(self, I_t: torch.Tensor) -> dict:
+        h = self.encoder(I_t)
+        h = h.reshape((h.shape[0], 1024))
+        probs = self.output_probs(h)
+        return {"probs": probs}

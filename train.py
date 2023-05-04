@@ -140,20 +140,29 @@ def main():
                 for idx, (I, u, p, label) in enumerate(test_loader):
 
                     label = torch.eye(10)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
+                    y = model.label_encoder.sample({"I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[0]})["y_t"]
 
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
+                        # I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
+                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
+                        #     u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
+                        #     label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
                         I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
-                            label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
+                            y)
 
 
+                        # latent_position = model.encoder.sample_mean({
+                        #     "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                        #     "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1]})
                         latent_position = model.encoder.sample_mean({
                             "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                            "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1]})
+                            "y_t": y})
 
                         all_latent_position.append(
                             latent_position.to("cpu").detach().numpy()[0].tolist())

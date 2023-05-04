@@ -45,17 +45,18 @@ def main():
         time_step = _env.reset()
 
         number = time_step[2]
-        label = torch.eye(10)[number].cuda().unsqueeze(0)
+        # label = torch.eye(10)[number].cuda().unsqueeze(0)
 
         target_observation, state, reward, done = _env.step(torch.zeros(1, 2))
+        y = model.label_encoder.sample({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].cuda()})["y_t"]
         target_x_q_t = model.encoder.sample_mean({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
-            "y_t": label})
+            "y_t": y})
 
         _env = ControlSuiteEnv(**cfg["environment"])
         time_step = _env.reset()
         
         number = time_step[2]
-        label = torch.eye(10)[number].cuda().unsqueeze(0)
+        # label = torch.eye(10)[number].cuda().unsqueeze(0)
 
         action = torch.zeros(1, 2)
         for _ in range(200):
@@ -64,10 +65,12 @@ def main():
             #===================#
             observation, state, reward, done = _env.step(action.cpu())
 
+            y = model.label_encoder.sample({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].cuda()})["y_t"]
+
             x_q_t = model.encoder.sample_mean({
                 "I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
-                "y_t": label})
-            reconstructed_image = model.decoder.sample_mean({"x_t": x_q_t, "y_t": label})
+                "y_t": y})
+            reconstructed_image = model.decoder.sample_mean({"x_t": x_q_t, "y_t": y})
 
             #============#
             # Get action #
@@ -75,6 +78,7 @@ def main():
             action = (target_x_q_t - x_q_t).detach()
 
             # action = -torch.flip(action, dims=[1])
+            action = -action
             # action[0, 1] = -action[0, 1]
 
             art1 = axis1.imshow(env.postprocess_observation(target_observation.detach().numpy(), 8))
