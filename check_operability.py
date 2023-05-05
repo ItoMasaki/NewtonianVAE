@@ -13,7 +13,7 @@ from utils import env
 from environments import load, ControlSuiteEnv
 
 
-fig, (axis1, axis2) = plt.subplots(1, 2, tight_layout=True)
+fig, (axis1, axis2, axis3) = plt.subplots(1, 3, tight_layout=True)
 
 def main():
     parser = argparse.ArgumentParser(description='Collection dataset')
@@ -51,7 +51,7 @@ def main():
             #===================#
             observation, state, reward, done = _env.step(action.cpu())
             x_q_t = model.encoder.sample_mean({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"])})
-            reconstructed_image = model.decoder.sample_mean({"x_q_t": x_q_t})
+            reconstructed_image = model.decoder.sample_mean({"x_t": x_q_t})
 
             #============#
             # Get action #
@@ -60,8 +60,9 @@ def main():
 
             art1 = axis1.imshow(env.postprocess_observation(target_observation.detach().numpy(), 8))
             art2 = axis2.imshow(env.postprocess_observation(observation.detach().numpy(), 8))
+            art3 = axis3.imshow(env.postprocess_observation(reconstructed_image[0].permute(1, 2, 0).cpu().detach().numpy(), 8))
 
-            frames.append([art1, art2])
+            frames.append([art1, art2, art3])
 
         ani = animation.ArtistAnimation(fig, frames, interval=10)
         ani.save(f"output.{episode}.mp4", writer="ffmpeg")
