@@ -39,7 +39,7 @@ def main():
     observation_position = []
     latent_position = []
 
-    fig = plt.figure(figsize = (10,10))
+    fig = plt.figure(figsize = (10, 5))
 
     _x_yello = []
     _y_yello = []
@@ -61,6 +61,8 @@ def main():
 
     lower_brown = np.array([75, 65, 58], dtype=np.uint8)
     upper_brown = np.array([96, 79, 80], dtype=np.uint8)
+
+    frames = []
 
     for i in np.linspace(*x_lim, 40):
         for j in np.linspace(*y_lim, 40):
@@ -86,21 +88,30 @@ def main():
 
             plt.clf()
 
-            ax1 = fig.add_subplot(2, 1, 1)
-            ax2 = fig.add_subplot(2, 1, 2)
+            ax1 = fig.add_subplot(1, 2, 1)
+            ax2 = fig.add_subplot(1, 2, 2)
 
-            ax1.imshow(image)
-
-            ax2.scatter(_x_yello, _y_yello, c="yellow")
-            ax2.scatter(_x_brown, _y_brown, c="brown")
-            ax2.scatter(_x_black, _y_black, c="black")
+            art1 = ax1.imshow(image)
+            frames.append([art1])
 
             ax2.set_xlim(*x_lim)
             ax2.set_ylim(*y_lim)
+            ax2.set_aspect('equal')
+
+            art2 = ax2.scatter(_x_yello, _y_yello, c="yellow")
+            art3 = ax2.scatter(_x_brown, _y_brown, c="brown")
+            art4 = ax2.scatter(_x_black, _y_black, c="black")
+            frames.append([art2])
+            frames.append([art3])
+            frames.append([art4])
 
             plt.pause(0.01)
 
     plt.show()
+
+    # アニメーションの作成
+    ani = animation.ArtistAnimation(fig, frames, interval=100)
+    ani.save('check_image.mp4', writer="ffmpeg")
 
 if __name__ == "__main__":
     main()
