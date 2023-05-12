@@ -44,13 +44,11 @@ def main():
         label = torch.eye(10)[number].cuda().unsqueeze(0)
         # _env.render()
 
-        y = model.label_encoder.sample({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].cuda()})["y_t"]
-
         observation, state, reward, done = _env.step(torch.zeros(2))
         
         x_q_t = model.encoder.sample_mean({
             "I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].cuda(),
-            "y_t": y
+            "y_t": label
             })
 
         latent_position.append(x_q_t.to("cpu").detach().numpy()[0])

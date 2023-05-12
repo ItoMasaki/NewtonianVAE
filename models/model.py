@@ -8,7 +8,7 @@ from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E
 from pixyz.models import Model
 
-from models.distributions import Encoder, Decoder, Transition, Velocity, LabelEncoder
+from models.distributions import Encoder, Decoder, Transition, Velocity#, LabelEncoder
 
 # from distributions import Encoder, Decoder, Transition, Velocity, LabelEncoder
 # import argparse
@@ -39,7 +39,6 @@ class ConditionalNewtonianVAE(Model):
         self.decoder = Decoder(**decoder_param).to(device)
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
-        self.label_encoder = LabelEncoder(10, "ReLU").to(device)
 
         #-------------------------#
         # Define hyperparams      #
@@ -54,7 +53,7 @@ class ConditionalNewtonianVAE(Model):
         self.loss_cls = (beta*kl_loss - recon_loss).mean()
 
         self.distributions = nn.ModuleList(
-            [self.encoder, self.decoder, self.transition, self.velocity, self.label_encoder])
+            [self.encoder, self.decoder, self.transition, self.velocity])
 
         # -------------------------#
         # Set params and optim     #
@@ -85,8 +84,6 @@ class ConditionalNewtonianVAE(Model):
 
         T, B, C = u.shape
 
-        y = self.label_encoder.sample({"I_t": I[0]}, reparam=True)["y_t"]
-        
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
         x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y}, reparam=True)["x_t"]
 
@@ -102,8 +99,6 @@ class ConditionalNewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            # step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y, 'beta': beta})
-            y_tp1 = self.label_encoder.sample({"I_t": I[step+1]}, reparam=True)["y_t"]
             step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y, 'beta': beta})
 
             total_loss += step_loss
