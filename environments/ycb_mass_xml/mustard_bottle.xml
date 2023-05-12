@@ -28,7 +28,7 @@
       <camera name="cam0" pos="0 -0.3 0.3" xyaxes="1 0 0 0 0.7 0.7"/>
       <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0" />
       <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0" />
-      <!--joint name="shoulder" limited="true" range="-160 160"/-->
+      <joint name="shoulder" limited="true" range="-160 160"/>
       <include file="environments/includes/body_006_mustard_bottle.xml"/>
     </body>
 
@@ -50,6 +50,6 @@
   <actuator>
     <motor name="t1" tendon="t1"/>
     <motor name="t2" tendon="t2"/>
-    <!--motor name="shoulder" joint="shoulder"/-->
+    <motor name="shoulder" joint="shoulder"/>
   </actuator>
 </mujoco>

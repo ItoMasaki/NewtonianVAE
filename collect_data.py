@@ -50,7 +50,7 @@ def main():
             action = 0.
 
             for _ in range(sequence_size):
-                action += np.random.uniform(-0.01, 0.01, 2)
+                action += np.random.uniform(-0.01, 0.01, 3)
                 action = np.clip(action, -1, 1)
 
                 observation, state, reward, done = env.step(torch.from_numpy(action))
