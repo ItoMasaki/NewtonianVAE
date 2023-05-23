@@ -41,10 +41,10 @@ def main():
         print(f"Step {i} / 500", end="\r")
 
         observation, state, number = _env.reset()
-        label = torch.eye(10)[number].cuda().unsqueeze(0)
+        label = torch.eye(1)[number].cuda().unsqueeze(0)
         # _env.render()
 
-        observation, state, reward, done = _env.step(torch.zeros(2))
+        observation, state, reward, done = _env.step(torch.zeros(3))
         
         x_q_t = model.encoder.sample_mean({
             "I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].cuda(),

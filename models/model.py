@@ -8,7 +8,7 @@ from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E
 from pixyz.models import Model
 
-from models.distributions import Encoder, Decoder, Transition, Velocity#, LabelEncoder
+from models.distributions import Encoder, Decoder, Transition, Velocity, LabelEncoder
 
 # from distributions import Encoder, Decoder, Transition, Velocity, LabelEncoder
 # import argparse
@@ -36,6 +36,8 @@ class ConditionalNewtonianVAE(Model):
         # Define models           #
         #-------------------------#
         self.encoder = Encoder(**encoder_param).to(device)
+        self.label_encoder = LabelEncoder(label_dim=3, activation_func_name="ReLU").to(device)
+        
         self.decoder = Decoder(**decoder_param).to(device)
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
@@ -49,7 +51,7 @@ class ConditionalNewtonianVAE(Model):
         # Define loss functions   #
         #-------------------------#
         recon_loss = E(self.transition, LogProb(self.decoder))
-        kl_loss = KL(self.encoder, self.transition)
+        kl_loss = KL(self.encoder, self.transition, analytical=False)
         self.loss_cls = (beta*kl_loss - recon_loss).mean()
 
         self.distributions = nn.ModuleList(
@@ -85,12 +87,13 @@ class ConditionalNewtonianVAE(Model):
         T, B, C = u.shape
 
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-        x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y}, reparam=True)["x_t"]
+        x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y[0]}, reparam=True)["x_t"]
+        # x_q_tn1 = torch.zeros(B, C).to(self.device)
 
         for step in range(1, T-1):
 
             # x^q_{t} ~ p(x^q_{t} | I_{t})
-            x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y}, reparam=True)["x_t"]
+            x_q_t = self.encoder.sample({"I_t": I[step], "y_t": label}, reparam=True)["x_t"]
 
             # v_t = (x^q_{t} - x^q_{t-1})/dt
             v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -99,7 +102,7 @@ class ConditionalNewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y, 'beta': beta})
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': label, 'beta': beta})
 
             total_loss += step_loss
 

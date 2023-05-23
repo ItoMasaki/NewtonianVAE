@@ -48,9 +48,11 @@ def main():
             actions = []
             positions = []
             action = 0.
+            rotation = 0.
 
             for _ in range(sequence_size):
-                action += np.random.uniform(-0.01, 0.01, 3)
+                action += np.concatenate([np.random.uniform(-0.01, 0.01, 2), np.random.uniform(-0.05, 0.05, 1)])
+                
                 action = np.clip(action, -1, 1)
 
                 observation, state, reward, done = env.step(torch.from_numpy(action))

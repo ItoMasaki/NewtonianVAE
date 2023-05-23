@@ -45,9 +45,9 @@ def main():
         time_step = _env.reset()
 
         number = time_step[2]
-        label = torch.eye(10)[number].cuda().unsqueeze(0)
+        label = torch.eye(1)[number].cuda().unsqueeze(0)
 
-        target_observation, state, reward, done = _env.step(torch.zeros(1, 2))
+        target_observation, state, reward, done = _env.step(torch.zeros(1, 3))
         target_x_q_t = model.encoder.sample_mean({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
             "y_t": label})
 
@@ -55,9 +55,9 @@ def main():
         time_step = _env.reset()
         
         number = time_step[2]
-        label = torch.eye(10)[number].cuda().unsqueeze(0)
+        label = torch.eye(1)[number].cuda().unsqueeze(0)
 
-        action = torch.zeros(1, 2)
+        action = torch.zeros(1, 3)
         for _ in range(200):
             #===================#
             # Get current image #
@@ -77,16 +77,16 @@ def main():
             action = (target_x_q_t - x_q_t).detach()
 
             # action = -torch.flip(action, dims=[1])
-            # action = -action
+            action = -action
             # action[0, 1] = -action[0, 1]
 
             art1 = axis1.imshow(env.postprocess_observation(target_observation.detach().numpy(), 8))
             art2 = axis2.imshow(env.postprocess_observation(observation.detach().numpy(), 8))
             axis3.set_ylim(-0.5, 0.5)
-            bar1, bar2 = axis3.bar(["X", "Y"], action[0].cpu().detach().numpy(), color=["black", "black"])
+            bar1, bar2, bar3 = axis3.bar(["X", "Y", "R"], action[0].cpu().detach().numpy(), color=["black", "black", "black"])
             art4 = axis4.imshow(env.postprocess_observation(reconstructed_image[0].permute(1, 2, 0).cpu().detach().numpy(), 8))
 
-            frames.append([art1, art2, bar1, bar2, art4])
+            frames.append([art1, art2, bar1, bar2, bar3, art4])
 
         ani = animation.ArtistAnimation(fig, frames, interval=10)
         ani.save(f"{save_root_path}/output.{episode}.mp4", writer="ffmpeg")

@@ -1,14 +1,14 @@
 batch_size: &batch_size 8
 epoch_size: 300 
-check_epoch: 20
+check_epoch: 1
 bit_depth: &bit_depth 8
 device: &device cuda:0
 path: &path datasets/1_ycb_mass
 
 
 weight:
-  path: results/2022_12_18_22_11_30/weights
-  filename: 300.weight
+  path: results/2023_05_13_20_22_13/weights
+  filename: 20.weight
 
 
 environment:
@@ -27,14 +27,15 @@ model:
 
   encoder_param:
     input_dim: 3
-    output_dim: 2
-    act_func_name: ReLU
+    label_dim: 3
+    output_dim: 3
+    act_func_name: SiLU
 
   decoder_param:
-    input_dim: 2
+    input_dim: 3
+    label_dim: 3
     output_dim: 3
-    act_func_name: LeakyReLU
-    device: *device
+    act_func_name: SiLU
 
   transition_param:
     delta_time: *delta_time
@@ -44,7 +45,7 @@ model:
     act_func_name: ReLU
     delta_time: *delta_time
     device: *device
-    use_data_efficiency: False
+    use_data_efficiency: True
 
   optimizer: Adam
   optimizer_params:
