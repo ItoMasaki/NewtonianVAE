@@ -54,13 +54,16 @@ def main():
                 action = np.clip(action, -1, 1)
 
                 observation, state, reward, done = env.step(torch.from_numpy(action))
+                # print(state.observation["position"])
                 # env.render()
 
                 images.append(observation.permute(2, 0, 1)[
                     np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
 
-                positions.append(state.observation["position"][np.newaxis, :])
+                position = state.observation["position"][:2]
+
+                positions.append(position[np.newaxis, :])
 
             save_memory.append(np.concatenate(images),
                                np.concatenate(actions), np.concatenate(positions), labels, episode)

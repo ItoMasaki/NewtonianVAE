@@ -65,7 +65,7 @@ class Physics(mujoco.Physics):
   def mass_to_target(self):
     """Returns the vector from mass to target in global coordinate."""
     return (self.named.data.geom_xpos['target'] -
-            self.named.data.geom_xpos[6])
+            self.named.data.geom_xpos[4])
 
   def mass_to_target_dist(self):
     """Returns the distance from mass to the target."""
@@ -97,9 +97,19 @@ class PointMass(base.Task):
     Args:
       physics: An instance of `mujoco.Physics`.
     """
-    physics.named.data.qpos["root_x"] = np.random.uniform(-.2, .2)
-    physics.named.data.qpos["root_y"] = np.random.uniform(-.2, .2)
-    # physics.named.data.qpos["shoulder"] = np.random.uniform(-3., 3.)
+
+    _range = 0.25
+
+    camera_x = np.random.uniform(-_range, _range)
+    camera_y = np.random.uniform(-_range, _range)
+
+    physics.named.data.qpos["root_x"] = camera_x
+    physics.named.data.qpos["root_y"] = camera_y
+
+    # musterd_bottle_x musterd_bottle_y
+    physics.named.data.qpos["musterd_bottle_x"] = camera_x
+    physics.named.data.qpos["musterd_bottle_y"] = camera_y
+
     super().initialize_episode(physics)
 
   def get_observation(self, physics):

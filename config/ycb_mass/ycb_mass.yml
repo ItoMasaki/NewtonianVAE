@@ -3,7 +3,7 @@ epoch_size: 300
 check_epoch: 1
 bit_depth: &bit_depth 8
 device: &device cuda:0
-path: &path datasets/ycb_mass
+path: &path datasets/centering_ycb_mass
 
 
 weight:
@@ -54,7 +54,7 @@ model:
 
 dataset:
   train:
-    episode_size: &train_episode_size 5000
+    episode_size: &train_episode_size 1000
     sequence_size: &trin_sequence_size 100
 
     data:

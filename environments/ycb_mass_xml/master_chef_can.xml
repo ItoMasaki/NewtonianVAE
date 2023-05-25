@@ -32,6 +32,11 @@
       <include file="environments/includes/body_002_master_chef_can.xml"/>
     </body>
 
+    <body name="other" pos="0 0 .01">
+      <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0" />
+      <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0" />
+      <include file="environments/includes/body_002_master_chef_can.xml"/>
+    </body>
 
     <geom name="target" pos="0 0 .01" material="target" type="sphere" size=".015"/>
   </worldbody>
