@@ -35,8 +35,8 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define models           #
         #-------------------------#
-        self.encoder = Encoder(**encoder_param).to(device)
-        self.decoder = Decoder(**decoder_param).to(device)
+        self.encoder = torch.compile(Encoder(**encoder_param)).to(device)
+        self.decoder = torch.compile(Decoder(**decoder_param)).to(device)
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
 
@@ -82,15 +82,22 @@ class ConditionalNewtonianVAE(Model):
 
         total_loss = 0.
 
+        encoded_pos = []
+
         T, B, C = u.shape
 
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-        x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y}, reparam=True)["x_t"]
+        # x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y[0]}, reparam=True)["x_t"]
+        x_q_tn1 = torch.zeros(B, C).to(self.device)
+
+        encoded_pos.append(x_q_tn1)
 
         for step in range(1, T-1):
 
             # x^q_{t} ~ p(x^q_{t} | I_{t})
-            x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y}, reparam=True)["x_t"]
+            x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y[step]}, reparam=True)["x_t"]
+
+            encoded_pos.append(x_q_t)
 
             # v_t = (x^q_{t} - x^q_{t-1})/dt
             v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -99,20 +106,20 @@ class ConditionalNewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y, 'beta': beta})
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1], 'beta': beta})
 
             total_loss += step_loss
 
             x_q_tn1 = x_q_t
 
-        return total_loss/T
+        return total_loss/T, torch.stack(encoded_pos, dim=0)
 
     def train(self, train_x_dict={}):
 
         self.distributions.train()
 
         with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
-            loss = self.calculate_loss(train_x_dict)
+            loss, pos = self.calculate_loss(train_x_dict)
 
         self.optimizer.zero_grad(set_to_none=True)
 
@@ -130,7 +137,7 @@ class ConditionalNewtonianVAE(Model):
         # update scaler
         self.scaler.update()
 
-        return loss.item()
+        return loss.item(), pos
 
     def test(self, test_x_dict={}):
 
@@ -138,9 +145,9 @@ class ConditionalNewtonianVAE(Model):
 
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
-                loss = self.calculate_loss(test_x_dict)
+                loss, pos = self.calculate_loss(test_x_dict)
 
-        return loss.item()
+        return loss.item(), pos
 
     def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor, y: torch.Tensor):
         self.distributions.eval()

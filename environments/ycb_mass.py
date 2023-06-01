@@ -98,7 +98,7 @@ class PointMass(base.Task):
       physics: An instance of `mujoco.Physics`.
     """
 
-    _range = 0.25
+    _range = 0.5
 
     camera_x = np.random.uniform(-_range, _range)
     camera_y = np.random.uniform(-_range, _range)
@@ -107,8 +107,10 @@ class PointMass(base.Task):
     physics.named.data.qpos["root_y"] = camera_y
 
     # musterd_bottle_x musterd_bottle_y
-    physics.named.data.qpos["musterd_bottle_x"] = camera_x
-    physics.named.data.qpos["musterd_bottle_y"] = camera_y
+    # physics.named.data.qpos["musterd_bottle_x"] = camera_x
+    # physics.named.data.qpos["musterd_bottle_y"] = camera_y
+    physics.named.data.qpos["musterd_bottle_x"] = 0.
+    physics.named.data.qpos["musterd_bottle_y"] = 0.
 
     super().initialize_episode(physics)
 
@@ -121,11 +123,4 @@ class PointMass(base.Task):
 
   def get_reward(self, physics):
     """Returns a reward to the agent."""
-    target_size = physics.named.model.geom_size['target', 0]
-    near_target = rewards.tolerance(physics.mass_to_target_dist(),
-                                    bounds=(0, target_size), margin=target_size)
-    control_reward = rewards.tolerance(physics.control(), margin=1,
-                                       value_at_margin=0,
-                                       sigmoid='quadratic').mean()
-    small_control = (control_reward + 4) / 5
-    return near_target * small_control
+    return 0.

@@ -7,6 +7,9 @@ from torch.nn import functional as F
 from pixyz import distributions as dist
 from pixyz.utils import epsilon
 
+# import resnet from torchvision
+from torchvision import models
+
 
 
 class Encoder(dist.Normal):
@@ -19,30 +22,42 @@ class Encoder(dist.Normal):
 
         activation_func = getattr(nn, activate_func)
 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(32, 64, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(64, 128, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(128, 256, 4, stride=2),
-            activation_func(),
-        )
+        # use resnet18 as encoder
+        self.encoder = models.resnet18(pretrained=True)
 
         self.loc = nn.Sequential(
-            nn.Linear(1024 + label_dim, output_dim),
+            nn.Linear(1000 + label_dim, output_dim),
         )
 
         self.scale = nn.Sequential(
-            nn.Linear(1024 + label_dim, output_dim),
+            nn.Linear(1000 + label_dim, output_dim),
             nn.Softplus()
         )
 
+        # self.encoder = nn.Sequential(
+        #     nn.Conv2d(3, 32, 4, stride=2),
+        #     activation_func(),
+        #     nn.Conv2d(32, 64, 4, stride=2),
+        #     activation_func(),
+        #     nn.Conv2d(64, 128, 4, stride=2),
+        #     activation_func(),
+        #     nn.Conv2d(128, 256, 4, stride=2),
+        #     activation_func(),
+        # )
+
+        # self.loc = nn.Sequential(
+        #     nn.Linear(1024 + label_dim, output_dim),
+        # )
+
+        # self.scale = nn.Sequential(
+        #     nn.Linear(1024 + label_dim, output_dim),
+        #     nn.Softplus()
+        # )
+
     def forward(self, I_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         h = self.encoder(I_t)
-        B, C, W, H = h.shape
-        h = h.reshape((B, C*W*H))
+        # B, C, W, H = h.shape
+        # h = h.reshape((B, C*W*H))
 
         h = torch.cat((h, y_t), dim=1)
 
@@ -62,14 +77,24 @@ class Decoder(dist.Normal):
 
         activation_func = getattr(nn, activate_func)
 
+        # [9, 64, 64, 64] -> [9, 3, 224, 224]
         self.loc = nn.Sequential(
-            nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
+            nn.ConvTranspose2d(input_dim+label_dim+2, 64, 3, stride=2),
             activation_func(),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1),
+            nn.ConvTranspose2d(64, 32, 2, stride=1),
             activation_func(),
-            nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
+            nn.ConvTranspose2d(32, 3, 2, stride=2),
             nn.Tanh()
         )
+
+        # self.loc = nn.Sequential(
+        #     nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
+        #     activation_func(),
+        #     nn.Conv2d(64, 64, 3, stride=1, padding=1),
+        #     activation_func(),
+        #     nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
+        #     nn.Tanh()
+        # )
 
         self.image_size = 64
         a = np.linspace(-1, 1, self.image_size)
@@ -102,6 +127,7 @@ class Decoder(dist.Normal):
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
 
         loc = self.loc(z_and_xy)/2.
+        print(loc.shape)
 
         return {"loc": loc, "scale": 1.}
 
@@ -129,11 +155,11 @@ class Velocity(dist.Deterministic):
       with  [A, log(−B), log C] = diag(f(x_{t-1}, v_{t-1}, u_{t-1}))
     """
 
-    def __init__(self, batch_size: int, delta_time: float, act_func_name: str, device: str, use_data_efficiency: bool):
+    def __init__(self, batch_size: int, delta_time: float, activate_func: str, device: str, use_data_efficiency: bool):
         super().__init__(var=["v_t"], cond_var=[
             "x_tn1", "v_tn1", "u_tn1"], name="f")
 
-        activation_func = getattr(nn, act_func_name)
+        activation_func = getattr(nn, activate_func)
         self.delta_time = delta_time
         self.device = device
         self.use_data_efficiency = use_data_efficiency

@@ -1,14 +1,14 @@
 batch_size: &batch_size 8
 epoch_size: 300 
-check_epoch: 1
+check_epoch: 10
 bit_depth: &bit_depth 8
 device: &device cuda:0
 path: &path datasets/centering_ycb_mass
 
 
 weight:
-  path: results/2023_04_30_19_24_23/weights
-  filename: 60.weight
+  path: results/2023_05_28_16_47_43/weights
+  filename: 80.weight
 
 
 environment:
@@ -23,7 +23,7 @@ model:
   clip_grad_norm: False
   clip_grad_value: False
   device: *device
-  use_amp: False
+  use_amp: True
 
   encoder_param:
     input_dim: 3
@@ -69,7 +69,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: 5
+      batch_size: 1
       shuffle: True
       drop_last: False
       num_workers: 8

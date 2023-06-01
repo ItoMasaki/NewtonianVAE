@@ -74,11 +74,12 @@ def main():
             #============#
             # Get action #
             #============#
-            action = (target_x_q_t - x_q_t).detach()
+            # action = (target_x_q_t - x_q_t).detach()
+            action = x_q_t.detach()
 
             # action = -torch.flip(action, dims=[1])
-            # action = -action
-            # action[0, 1] = -action[0, 1]
+            action[0, 1] = -action[0, 1]
+            action[0, 0] = -action[0, 0]
 
             art1 = axis1.imshow(env.postprocess_observation(target_observation.detach().numpy(), 8))
             art2 = axis2.imshow(env.postprocess_observation(observation.detach().numpy(), 8))

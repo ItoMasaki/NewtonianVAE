@@ -1,20 +1,20 @@
 batch_size: &batch_size 1
-epoch_size: 50000 
-check_epoch: 200
+epoch_size: 300 
+check_epoch: 10
 bit_depth: &bit_depth 8
-device: &device cpu
+device: &device cuda
 path: &path datasets/real_world
 
 
 weight:
-  path: results/2022_12_18_22_11_30/weights
+  path: results/2023_05_31_14_05_15/weights
   filename: 300.weight
 
 
 environment:
   domain_name: ycb_mass
   task_name: easy
-  max_episode_length: 1000
+  max_episode_length: 900
   bit_depth: 8
 
 
@@ -27,21 +27,22 @@ model:
 
   encoder_param:
     input_dim: 3
+    label_dim: 9
     output_dim: 2
-    act_func_name: ReLU
+    activate_func: ReLU
 
   decoder_param:
     input_dim: 2
+    label_dim: 9
     output_dim: 3
-    act_func_name: LeakyReLU
-    device: *device
+    activate_func: LeakyReLU
 
   transition_param:
     delta_time: *delta_time
 
   velocity_param:
     batch_size: *batch_size
-    act_func_name: ReLU
+    activate_func: ReLU
     delta_time: *delta_time
     device: *device
     use_data_efficiency: True
@@ -53,12 +54,12 @@ model:
 
 dataset:
   train:
-    episode_size: &train_episode_size 30
-    sequence_size: &trin_sequence_size 20
+    episode_size: &train_episode_size 900
+    sequence_size: &trin_sequence_size 10
 
     data:
       path: *path
-      filename: train.npz
+      filename: dataset.train.npz
 
     memory:
       episode_size: *train_episode_size
@@ -68,44 +69,23 @@ dataset:
       device: *device
 
     loader:
-      batch_size: 1
+      batch_size: 9
       shuffle: True
       drop_last: False
       num_workers: 8
       pin_memory: True
 
   validation:
-    episode_size: &validation_episode_size 30
+    episode_size: &validation_episode_size 90
     sequence_size: &validation_sequence_size 20
 
     data:
       path: *path
-      filename: validation.npz
+      filename: dataset.validation.npz
 
     memory:
       episode_size: *validation_episode_size
       sequence_size: *validation_sequence_size
-      action_size: 2
-      bit_depth: *bit_depth
-      device: *device
-
-    loader:
-      batch_size: 16
-      shuffle: False
-      drop_last: False
-      num_workers: 8
-      pin_memory: True
-
-  test:
-    episode_size: &test_episode_size 30
-    sequence_size: &test_sequence_size 20
-    data:
-      path: *path
-      filename: test.npz
-
-    memory:
-      episode_size: *test_episode_size
-      sequence_size: *test_sequence_size
       action_size: 2
       bit_depth: *bit_depth
       device: *device

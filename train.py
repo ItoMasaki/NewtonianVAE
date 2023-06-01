@@ -17,31 +17,62 @@ from utils import visualize, memory, env
 
 def data_loop(epoch, loader, model, device, beta, train_mode=False):
     mean_loss = 0
+    mean_correlation_x = 0
+    mean_correlation_y = 0
+
+    supervised_pos = []
+    infered_pos = []
 
     for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
-        label = torch.eye(10)[label.int()].to(device, non_blocking=True).squeeze(2)
+        # label = torch.eye(10)[label.int()].to(device, non_blocking=True).squeeze(2)
+        I = I.permute(0, 1, 4, 2, 3)
         batch_size = I.size()[0]
 
         if train_mode:
-            mean_loss += model.train({
+            loss, pos = model.train({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
                 "y": label.to(device, non_blocking=True).permute(1, 0, 2),
-                "beta": beta}) * batch_size
+                "beta": beta})
+
+            mean_loss += loss * batch_size
+            supervised_pos.append(p[:, :-1].detach().cpu().numpy())
+            infered_pos.append(pos.permute(1, 0, 2).detach().cpu().numpy())
+
+            mean_correlation_x += np.corrcoef(
+                    np.concatenate(supervised_pos, axis=0).reshape(-1, 2)[:, 0],
+                    np.concatenate(infered_pos, axis=0).reshape(-1, 2)[:, 0])[0, 1]
+            mean_correlation_y += np.corrcoef(
+                    np.concatenate(supervised_pos, axis=0).reshape(-1, 2)[:, 1],
+                    np.concatenate(infered_pos, axis=0).reshape(-1, 2)[:, 1])[0, 1]
+
         else:
-            mean_loss += model.test({
+            loss, pos = model.test({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
-                "u": u.to(device, non_blocking=True).permute(1, 0, 2),
+                "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
                 "y": label.to(device, non_blocking=True).permute(1, 0, 2),
-                "beta": beta}) * batch_size
+                "beta": beta})
+
+            mean_loss += loss * batch_size
+            supervised_pos.append(p[:, :-1].detach().cpu().numpy())
+            infered_pos.append(pos.permute(1, 0, 2).detach().cpu().numpy())
+
+            mean_correlation_x += np.corrcoef(
+                    np.concatenate(supervised_pos, axis=0).reshape(-1, 2)[:, 0],
+                    np.concatenate(infered_pos, axis=0).reshape(-1, 2)[:, 0])[0, 1]
+            mean_correlation_y += np.corrcoef(
+                    np.concatenate(supervised_pos, axis=0).reshape(-1, 2)[:, 1],
+                    np.concatenate(infered_pos, axis=0).reshape(-1, 2)[:, 1])[0, 1]
 
     mean_loss /= len(loader.dataset)
+    mean_correlation_x /= len(loader.dataset)
+    mean_correlation_y /= len(loader.dataset)
 
     if train_mode:
-        print('Epoch: {} Train loss: {:.4f}'.format(epoch, mean_loss))
+        print('\nEpoch: {} Train loss: {:.4f} Correlation X: {} Y: {}'.format(epoch, mean_loss, mean_correlation_x, mean_correlation_y))
     else:
-        print('Test loss: {:.4f}'.format(mean_loss))
-    return mean_loss
+        print('\nEpoch: {}  Test loss: {:.4f} Correlation X: {} Y: {}'.format(epoch, mean_loss, mean_correlation_x, mean_correlation_y))
+    return mean_loss, (mean_correlation_x, mean_correlation_y)
 
 
 def main():
@@ -52,7 +83,6 @@ def main():
 
     with open(args.config) as file:
         cfg = yaml.safe_load(file)
-        pprint.pprint(cfg)
 
     timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
     save_root_path = f"results/{timestamp}"
@@ -69,7 +99,6 @@ def main():
     #====================#
     train_loader = memory.make_loader(cfg, "train")
     validation_loader = memory.make_loader(cfg, "validation")
-    test_loader = memory.make_loader(cfg, "test")
 
     writer = SummaryWriter(comment="NewtonianVAE")
 
@@ -96,16 +125,20 @@ def main():
             #================#
             # Training phase #
             #================#
-            train_loss = data_loop(epoch, train_loader,
+            train_loss, correlations = data_loop(epoch, train_loader,
                                    model, cfg["device"], beta, train_mode=True)
-            writer.add_scalar('train_loss', train_loss, epoch - 1)
+            writer.add_scalar('train/loss', train_loss, epoch - 1)
+            writer.add_scalar('train/correlation_x', correlations[0], epoch - 1)
+            writer.add_scalar('train/correlation_y', correlations[1], epoch - 1)
 
             #==================#
             # Validation phase #
             #==================#
-            validation_loss = data_loop(
+            validation_loss, correlations = data_loop(
                 epoch, validation_loader, model, cfg["device"], beta, train_mode=False)
-            writer.add_scalar('validation_loss', validation_loss, epoch - 1)
+            writer.add_scalar('validation/loss', validation_loss, epoch - 1)
+            writer.add_scalar('validation/correlation_x', correlations[0], epoch - 1)
+            writer.add_scalar('validation/correlation_y', correlations[1], epoch - 1)
 
             pbar.set_postfix({"validation": validation_loss,
                               "train": train_loss})
@@ -137,38 +170,23 @@ def main():
                 #============#
                 # Test phase #
                 #============#
-                for idx, (I, u, p, label) in enumerate(test_loader):
+                for idx, (I, u, p, label) in enumerate(validation_loader):
+                    # label = torch.eye(10)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
 
-                    label = torch.eye(10)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
-                    y = model.label_encoder.sample({"I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[0]})["y_t"]
-
+                    I = I.permute(0, 1, 4, 2, 3)
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
-                        # I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
-                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
-                        #     u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
-                        #     label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
                         I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
-                            y)
+                            label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
 
-
-                        # latent_position = model.encoder.sample_mean({
-                        #     "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                        #     "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1]})
-                        latent_position = model.encoder.sample_mean({
-                            "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                            "y_t": y})
-
-                        all_latent_position.append(
-                            latent_position.to("cpu").detach().numpy()[0].tolist())
 
                         observation_position = p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0]
                         all_observation_position.append(observation_position.to("cpu").detach().numpy()[0].tolist())
+                        all_latent_position.append(x_q_t.to("cpu").detach().numpy()[0].tolist())
 
                         visualizer.append(
                             env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
@@ -178,22 +196,9 @@ def main():
                             np.array(all_latent_position)
                         )
 
-                    np.savez(f"{save_correlation_path}/{epoch}.{idx}", {'latent': all_latent_position, 'observation': all_observation_position})
-
-
                 visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
                 visualizer.add_images(writer, epoch)
                 print()
-
-                correlation_X = np.corrcoef(
-                    np.array(all_observation_position)[:, 0], np.array(all_latent_position)[:, 0])
-                correlation_Y = np.corrcoef(
-                    np.array(all_observation_position)[:, 1], np.array(all_latent_position)[:, 1])
-                print(correlation_X[0, 1], correlation_Y[0, 1])
-
-                writer.add_scalar('correlation/X', correlation_X[0, 1], epoch - 1)
-                writer.add_scalar('correlation/Y', correlation_Y[0, 1], epoch - 1)
-
 
 if __name__ == "__main__":
     main()
