@@ -25,7 +25,9 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
 
     for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
         # label = torch.eye(10)[label.int()].to(device, non_blocking=True).squeeze(2)
-        I = I.permute(0, 1, 4, 2, 3)
+        B, T, C = label.size()
+        label = p[:, :, 2].to(device, non_blocking=True).reshape(B, T, 1)
+        # I = I.permute(0, 1, 4, 2, 3)
         batch_size = I.size()[0]
 
         if train_mode:
@@ -40,11 +42,11 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
             infered_pos.append(pos.permute(1, 0, 2).detach().cpu().numpy())
 
             mean_correlation_x += np.corrcoef(
-                    np.concatenate(supervised_pos, axis=0).reshape(-1, 2)[:, 0],
-                    np.concatenate(infered_pos, axis=0).reshape(-1, 2)[:, 0])[0, 1]
+                    np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 0],
+                    np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 0])[0, 1]
             mean_correlation_y += np.corrcoef(
-                    np.concatenate(supervised_pos, axis=0).reshape(-1, 2)[:, 1],
-                    np.concatenate(infered_pos, axis=0).reshape(-1, 2)[:, 1])[0, 1]
+                    np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 1],
+                    np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 1])[0, 1]
 
         else:
             loss, pos = model.test({
@@ -58,11 +60,11 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
             infered_pos.append(pos.permute(1, 0, 2).detach().cpu().numpy())
 
             mean_correlation_x += np.corrcoef(
-                    np.concatenate(supervised_pos, axis=0).reshape(-1, 2)[:, 0],
-                    np.concatenate(infered_pos, axis=0).reshape(-1, 2)[:, 0])[0, 1]
+                    np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 0],
+                    np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 0])[0, 1]
             mean_correlation_y += np.corrcoef(
-                    np.concatenate(supervised_pos, axis=0).reshape(-1, 2)[:, 1],
-                    np.concatenate(infered_pos, axis=0).reshape(-1, 2)[:, 1])[0, 1]
+                    np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 1],
+                    np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 1])[0, 1]
 
     mean_loss /= len(loader.dataset)
     mean_correlation_x /= len(loader.dataset)
@@ -172,8 +174,9 @@ def main():
                 #============#
                 for idx, (I, u, p, label) in enumerate(validation_loader):
                     # label = torch.eye(10)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
-
-                    I = I.permute(0, 1, 4, 2, 3)
+                    B, T, C = label.size()
+                    label = p[:, :, 2].to(cfg["device"], non_blocking=True).reshape(B, T, 1)
+                    # I = I.permute(0, 1, 4, 2, 3)
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 

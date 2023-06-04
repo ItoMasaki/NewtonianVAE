@@ -99,18 +99,22 @@ class PointMass(base.Task):
     """
 
     _range = 0.5
+    _rot_range = 3.14
 
     camera_x = np.random.uniform(-_range, _range)
     camera_y = np.random.uniform(-_range, _range)
+    camera_shoulder = np.random.uniform(-_rot_range, _rot_range)
 
     physics.named.data.qpos["root_x"] = camera_x
     physics.named.data.qpos["root_y"] = camera_y
+    physics.named.data.qpos["shoulder"] = camera_shoulder
 
     # musterd_bottle_x musterd_bottle_y
-    # physics.named.data.qpos["musterd_bottle_x"] = camera_x
-    # physics.named.data.qpos["musterd_bottle_y"] = camera_y
-    physics.named.data.qpos["musterd_bottle_x"] = 0.
-    physics.named.data.qpos["musterd_bottle_y"] = 0.
+    physics.named.data.qpos["musterd_bottle_x"] = camera_x
+    physics.named.data.qpos["musterd_bottle_y"] = camera_y
+    physics.named.data.qpos["musterd_bottle_shoulder"] = camera_shoulder
+    # physics.named.data.qpos["musterd_bottle_x"] = 0.
+    # physics.named.data.qpos["musterd_bottle_y"] = 0.
 
     super().initialize_episode(physics)
 

@@ -47,10 +47,15 @@ def main():
             images = []
             actions = []
             positions = []
-            action = 0.
+            action = np.zeros(3)
+
+            first_rot = 0.
+            not_first_flag = True
 
             for _ in range(sequence_size):
-                action += np.random.uniform(-0.01, 0.01, 2)
+                action[0] += np.random.uniform(-0.01, 0.01, 1)
+                action[1] += np.random.uniform(-0.01, 0.01, 1)
+                action[2] += np.random.uniform(-0.5, 0.5, 1)
                 action = np.clip(action, -1, 1)
 
                 observation, state, reward, done = env.step(torch.from_numpy(action))
@@ -61,9 +66,16 @@ def main():
                     np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
 
-                position = state.observation["position"][:2]
+                if not_first_flag:
+                    first_rot = state.observation["position"][2]
+                    not_first_flag = False
+
+                position = state.observation["position"][:3]
+                position[2] -= first_rot
 
                 positions.append(position[np.newaxis, :])
+
+            # print(positions)
 
             save_memory.append(np.concatenate(images),
                                np.concatenate(actions), np.concatenate(positions), labels, episode)

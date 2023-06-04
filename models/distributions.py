@@ -22,46 +22,46 @@ class Encoder(dist.Normal):
 
         activation_func = getattr(nn, activate_func)
 
-        # use resnet18 as encoder
-        self.encoder = models.resnet18(pretrained=True)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 32, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(32, 64, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(64, 128, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(128, 256, 4, stride=2),
+            activation_func(),
+        )
 
-        self.loc = nn.Sequential(
-            nn.Linear(1000 + label_dim, output_dim),
+        self.loc_coordinate = nn.Sequential(
+            nn.Linear(1024 + label_dim, 2),
+            # nn.Linear(1024, output_dim),
+        )
+
+        self.loc_rot = nn.Sequential(
+            nn.Linear(1024 + label_dim, 1),
+            nn.Tanh()
         )
 
         self.scale = nn.Sequential(
-            nn.Linear(1000 + label_dim, output_dim),
+            nn.Linear(1024 + label_dim, output_dim),
+            # nn.Linear(1024, output_dim),
             nn.Softplus()
         )
 
-        # self.encoder = nn.Sequential(
-        #     nn.Conv2d(3, 32, 4, stride=2),
-        #     activation_func(),
-        #     nn.Conv2d(32, 64, 4, stride=2),
-        #     activation_func(),
-        #     nn.Conv2d(64, 128, 4, stride=2),
-        #     activation_func(),
-        #     nn.Conv2d(128, 256, 4, stride=2),
-        #     activation_func(),
-        # )
-
-        # self.loc = nn.Sequential(
-        #     nn.Linear(1024 + label_dim, output_dim),
-        # )
-
-        # self.scale = nn.Sequential(
-        #     nn.Linear(1024 + label_dim, output_dim),
-        #     nn.Softplus()
-        # )
-
     def forward(self, I_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         h = self.encoder(I_t)
-        # B, C, W, H = h.shape
-        # h = h.reshape((B, C*W*H))
+        B, C, W, H = h.shape
+        h = h.reshape((B, C*W*H))
 
         h = torch.cat((h, y_t), dim=1)
 
-        loc = self.loc(h)
+        # loc = self.loc(h)
+        loc_coordinate = self.loc_coordinate(h)
+        loc_rot = self.loc_rot(h) * torch.pi
+
+        loc = torch.cat((loc_coordinate, loc_rot), dim=1)
+
         scale = self.scale(h)
 
         return {"loc": loc, "scale": scale}
@@ -77,24 +77,15 @@ class Decoder(dist.Normal):
 
         activation_func = getattr(nn, activate_func)
 
-        # [9, 64, 64, 64] -> [9, 3, 224, 224]
         self.loc = nn.Sequential(
-            nn.ConvTranspose2d(input_dim+label_dim+2, 64, 3, stride=2),
+            # nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
+            nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
             activation_func(),
-            nn.ConvTranspose2d(64, 32, 2, stride=1),
+            nn.Conv2d(64, 64, 3, stride=1, padding=1),
             activation_func(),
-            nn.ConvTranspose2d(32, 3, 2, stride=2),
+            nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
             nn.Tanh()
         )
-
-        # self.loc = nn.Sequential(
-        #     nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
-        #     activation_func(),
-        #     nn.Conv2d(64, 64, 3, stride=1, padding=1),
-        #     activation_func(),
-        #     nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
-        #     nn.Tanh()
-        # )
 
         self.image_size = 64
         a = np.linspace(-1, 1, self.image_size)
@@ -105,20 +96,20 @@ class Decoder(dist.Normal):
         self.xy = np.concatenate((x, y), axis=-1)
 
         self.z_dim = input_dim + label_dim
+        self.z_dim = input_dim
 
     def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         device = x_t.device
 
-        x_t = torch.cat((x_t, y_t), dim=1)
-
-        # h = self.up_feature(h)
-        # h = h.reshape((h.shape[0], 256, 2, 2))
-
-        # loc = self.loc(h)/2
+        # x_t = torch.cat((x_t, y_t), dim=1)
 
         batchsize = len(x_t)
         xy_tiled = torch.from_numpy(
             np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(device)
+
+        # xy_tiled = xy_tiled - coordinate.view(batchsize, 1, 1, 2)
+        # xy_tiled = torch.einsum("ijkl,ilm->ijkm", xy_tiled, rotation_matrix)
+
 
         z_tiled = torch.repeat_interleave(
             x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, self.z_dim)
@@ -127,7 +118,6 @@ class Decoder(dist.Normal):
         z_and_xy = z_and_xy.permute(0, 3, 2, 1)
 
         loc = self.loc(z_and_xy)/2.
-        print(loc.shape)
 
         return {"loc": loc, "scale": 1.}
 
@@ -177,9 +167,9 @@ class Velocity(dist.Deterministic):
             )
 
         else:
-            self.A = torch.zeros((1, 2, 2)).to(self.device)
-            self.B = torch.zeros((1, 2, 2)).to(self.device)
-            self.C = torch.diag_embed(torch.ones(1, 2)).to(self.device)
+            self.A = torch.zeros((1, 3, 3)).to(self.device)
+            self.B = torch.zeros((1, 3, 3)).to(self.device)
+            self.C = torch.diag_embed(torch.ones(1, 3)).to(self.device)
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
@@ -200,33 +190,11 @@ class Velocity(dist.Deterministic):
         v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum(
             "ijk,ik->ik", B, v_tn1) + torch.einsum("ijk,ik->ik", C, u_tn1))
 
+        coordinate, rot = torch.chunk(x_tn1, 2, dim=1)
+        rot = rot % torch.pi
+
+        v_t = torch.cat((coordinate, rot), dim=1)
+
+        # print(f"v_t: {v_t.detach().cpu().numpy()}", end="\r")
+
         return {"v_t": v_t}
-
-
-# class LabelEncoder(dist.Categorical):
-#     def __init__(self, label_dim: int, activation_func_name: str):
-#         super().__init__(var=["y_t"], cond_var=["I_t"])
-# 
-#         activation_func = getattr(nn, activation_func_name)
-# 
-#         self.encoder = nn.Sequential(
-#             nn.Conv2d(3, 32, 4, stride=2),
-#             activation_func(),
-#             nn.Conv2d(32, 64, 4, stride=2),
-#             activation_func(),
-#             nn.Conv2d(64, 128, 4, stride=2),
-#             activation_func(),
-#             nn.Conv2d(128, 256, 4, stride=2),
-#             activation_func(),
-#         )
-# 
-#         self.output_probs = nn.Sequential(
-#             nn.Linear(1024, label_dim),
-#             nn.Sigmoid()
-#         )
-# 
-#     def forward(self, I_t: torch.Tensor) -> dict:
-#         h = self.encoder(I_t)
-#         h = h.reshape((h.shape[0], 1024))
-#         probs = self.output_probs(h)
-#         return {"probs": probs}

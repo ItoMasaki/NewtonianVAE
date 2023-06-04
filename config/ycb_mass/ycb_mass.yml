@@ -1,6 +1,6 @@
 batch_size: &batch_size 8
 epoch_size: 300 
-check_epoch: 10
+check_epoch: 1
 bit_depth: &bit_depth 8
 device: &device cuda:0
 path: &path datasets/centering_ycb_mass
@@ -27,13 +27,13 @@ model:
 
   encoder_param:
     input_dim: 3
-    label_dim: 10
-    output_dim: 2
+    label_dim: 1
+    output_dim: 3
     activate_func: ReLU
 
   decoder_param:
-    input_dim: 2
-    label_dim: 10
+    input_dim: 3
+    label_dim: 1
     output_dim: 3
     activate_func: LeakyReLU
 
@@ -42,7 +42,7 @@ model:
 
   velocity_param:
     batch_size: *batch_size
-    act_func_name: ReLU
+    activate_func: ReLU
     delta_time: *delta_time
     device: *device
     use_data_efficiency: True
@@ -64,7 +64,7 @@ dataset:
     memory:
       episode_size: *train_episode_size
       sequence_size: *trin_sequence_size
-      action_size: 2
+      action_size: 3
       bit_depth: *bit_depth
       device: *device
 
@@ -86,7 +86,7 @@ dataset:
     memory:
       episode_size: *validation_episode_size
       sequence_size: *validation_sequence_size
-      action_size: 2
+      action_size: 3
       bit_depth: *bit_depth
       device: *device
 
@@ -107,7 +107,7 @@ dataset:
     memory:
       episode_size: *test_episode_size
       sequence_size: *test_sequence_size
-      action_size: 2
+      action_size: 3
       bit_depth: *bit_depth
       device: *device
 

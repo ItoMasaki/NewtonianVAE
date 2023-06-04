@@ -5,10 +5,12 @@ from torch import nn, optim
 from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 
-from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E
+from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E, IterativeLoss
 from pixyz.models import Model
 
 from models.distributions import Encoder, Decoder, Transition, Velocity#, LabelEncoder
+
+from timm.scheduler import CosineLRScheduler
 
 # from distributions import Encoder, Decoder, Transition, Velocity, LabelEncoder
 # import argparse
@@ -49,7 +51,7 @@ class ConditionalNewtonianVAE(Model):
         # Define loss functions   #
         #-------------------------#
         recon_loss = E(self.transition, LogProb(self.decoder))
-        kl_loss = KL(self.encoder, self.transition)
+        kl_loss = KL(self.encoder, self.transition, analytical=False)
         self.loss_cls = (beta*kl_loss - recon_loss).mean()
 
         self.distributions = nn.ModuleList(
@@ -131,10 +133,11 @@ class ConditionalNewtonianVAE(Model):
         if self.clip_value:
             clip_grad_value_(self.distributions.parameters(), self.clip_value)
 
+        # self.scheduler.step(self.epoch)
+        # self.epoch += 1
+
         # update params
         self.scaler.step(self.optimizer)
-
-        # update scaler
         self.scaler.update()
 
         return loss.item(), pos
@@ -210,6 +213,13 @@ class ConditionalNewtonianVAE(Model):
 
         self.optimizer.load_state_dict(torch.load(
             f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['optimizer_state_dict'])
+
+    @staticmethod
+    def create_epochs_and_others(num_epochs=100, repeat=1, num_steps_per_epoch=10,):
+        num_epochs = num_epochs
+        num_epoch_repeat = num_epochs//repeat
+        num_steps_per_epoch = num_steps_per_epoch
+        return num_epochs, num_epoch_repeat, num_steps_per_epoch
 
 def main():
     parser = argparse.ArgumentParser(description='Collection dataset')
