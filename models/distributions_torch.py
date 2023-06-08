@@ -3,22 +3,17 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
-
-from pixyz import distributions as dist
-from pixyz.utils import epsilon
-
-# import resnet from torchvision
-from torchvision import models
+from torch.distributions import Normal
 
 
 
-class Encoder(dist.Normal):
+class Encoder(nn.Module):
     """
         q(x_t | I_t, y_t) = Normal(x_t | I_t, y_t)
     """
 
     def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["x_t"], cond_var=["I_t", "y_t"], name="q")
+        super().__init__()
 
         activation_func = getattr(nn, activate_func)
 
@@ -56,22 +51,21 @@ class Encoder(dist.Normal):
         loc = self.loc(h)
         scale = self.scale(h)
 
-        return {"loc": loc, "scale": scale}
+        return Normal(loc, scale).rsample()
 
 
-class Decoder(dist.Normal):
+class Decoder(nn.Module):
     """
         p(I_t | x_t, y_t) = Bernoulli(I_t | x_t, y_t)
     """
 
     def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["I_t"], cond_var=["x_t", "y_t"])
+        super().__init__()
 
         activation_func = getattr(nn, activate_func)
 
         self.loc = nn.Sequential(
-            # nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
-            nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
+            nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
             activation_func(),
             nn.Conv2d(64, 64, 3, stride=1, padding=1),
             activation_func(),
@@ -88,12 +82,11 @@ class Decoder(dist.Normal):
         self.xy = np.concatenate((x, y), axis=-1)
 
         self.z_dim = input_dim + label_dim
-        self.z_dim = input_dim
 
     def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         device = x_t.device
 
-        # x_t = torch.cat((x_t, y_t), dim=1)
+        x_t = torch.cat((x_t, y_t), dim=1)
 
         batchsize = len(x_t)
         xy_tiled = torch.from_numpy(
@@ -107,73 +100,67 @@ class Decoder(dist.Normal):
 
         loc = self.loc(z_and_xy)/2.
 
-        return {"loc": loc, "scale": 1.}
+        return Normal(loc, 0.001).rsample()
 
 
-class Transition(dist.Normal):
+class Transition(nn.Module):
     """
       p(x_t | x_{t-1}, u_{t-1}; v_t) = N(x_t | x_{t-1} + ∆t·v_t, σ^2)
     """
 
     def __init__(self, delta_time: float):
-        super().__init__(var=["x_t"], cond_var=["x_tn1", "v_t"])
+        super().__init__()
 
         self.delta_time = delta_time
 
-        self.sigma = nn.Parameter(torch.ones(3, requires_grad=True))
-        self.acivation_func = nn.Softplus()
-
-    def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor) -> dict:
+    def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor):
 
         x_t = x_tn1 + self.delta_time * v_t
 
-        return {"loc": x_t, "scale": self.acivation_func(self.sigma)}
+        return Normal(x_t, 0.001).rsample()
 
 
-class Velocity(dist.Deterministic):
+class Velocity(nn.Module):
     """
-      v_t = v_{t-1} + ∆t·(A·x_{t-1} + B·v_{t-1} + C·u_{t-1})
-      with  [A, log(−B), log C] = diag(f(x_{t-1}, v_{t-1}, u_{t-1}))
+        f(x_t | x_{t-1}, y_t) = f(x_t | x_{t-1}, y_t)
     """
 
-    def __init__(self, batch_size: int, delta_time: float, activate_func: str, device: str, use_data_efficiency: bool):
-        super().__init__(var=["v_t"], cond_var=[
-            "x_tn1", "v_tn1", "u_tn1"], name="f")
+    def __init__(self, delta_time, activate_func, device, use_data_efficiency):
+        super().__init__()
 
         activation_func = getattr(nn, activate_func)
-        self.delta_time = delta_time
-        self.device = device
-        self.use_data_efficiency = use_data_efficiency
-
-        if not self.use_data_efficiency:
-
-            self.coefficient_ABC = nn.Sequential(
-                nn.Linear(2*3, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 6),
-            )
-
-        else:
-            self.A = torch.zeros((1, 3, 3)).to(self.device)
-            self.B = torch.zeros((1, 3, 3)).to(self.device)
-            self.C = torch.diag_embed(torch.ones(1, 3)).to(self.device)
-
-    def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
-
-        combined_vector = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)
-
-        # For data efficiency
-        if self.use_data_efficiency:
-            A = self.A
-            B = self.B
-            C = self.C
-        else:
-            _A, _B, _C = torch.chunk(self.coefficient_ABC(combined_vector), 3, dim=-1)
-            A = torch.diag_embed(_A)
+        self.delta_time = delta_time    
+        self.use_data_efficiency = use_data_efficiency    
+    
+        if not self.use_data_efficiency:    
+    
+            self.coefficient_ABC = nn.Sequential(    
+                nn.Linear(2*3, 2),    
+                activation_func(),    
+                nn.Linear(2, 2),    
+                activation_func(),    
+                nn.Linear(2, 2),    
+                activation_func(),    
+                nn.Linear(2, 6),    
+            )    
+    
+        else:    
+            self.A = torch.zeros((1, 3, 3)).to(device)    
+            self.B = torch.zeros((1, 3, 3)).to(device)    
+            self.C = torch.diag_embed(torch.ones(1, 3)).to(device)    
+    
+    def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:    
+    
+        combined_vector = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)    
+    
+        # For data efficiency    
+        if self.use_data_efficiency:    
+            A = self.A    
+            B = self.B    
+            C = self.C    
+        else:    
+            _A, _B, _C = torch.chunk(self.coefficient_ABC(combined_vector), 3, dim=-1)    
+            A = torch.diag_embed(_A)    
             B = torch.diag_embed(-torch.exp(_B))
             C = torch.diag_embed(torch.exp(_C))
 
@@ -183,36 +170,51 @@ class Velocity(dist.Deterministic):
 
         # print(f"v_t: {v_t.detach().cpu().numpy()}", end="\r")
 
-        return {"v_t": v_t}
+        return v_t
 
 
-class RotDecoder(dist.Normal):
-    """
-        p(R_t | x_t, y_t) = Normal(I_t | x_t, y_t)
-    """
+def main():
+    encoder = Encoder(3, 10, 3, "ReLU")
+    decoder = Decoder(3, 10, 3, "ReLU")
+    velocity = Velocity(0.1, "ReLU", "cpu", True)
+    transition = Transition(0.1)
 
-    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["R_t"], cond_var=["x_t", "y_t"])
+    I_t = torch.randn(100, 5, 3, 64, 64)
+    u_t = torch.randn(100, 5, 3)
 
-        activation_func = getattr(nn, activate_func)
+    y = torch.randn(5, 10)
+    x_tn1 = torch.zeros(5, 3)
 
-        self.loc = nn.Sequential(
-            nn.Linear(1 + label_dim, 1),
-        )
+    total_loss = 0.
 
-        self.scale = nn.Sequential(
-            nn.Linear(1 + label_dim, 1),
-            nn.Softplus(),
-        )
+    for t in range(1, 100-1):
+        print(x_tn1)
+
+        x_t = encoder.rsample(I_t[t], y)
+        # print(x_t.shape)
+
+        v_tn1 = x_t - x_tn1
+        # print(v_t)
+
+        v_t = velocity(x_tn1, v_tn1, u_t[t-1])
+        # print(v_t)
+
+        x_tp1 = transition(x_t, v_t)
+        # print(x_t)
+
+        I_tp1 = decoder(x_tp1, y)
+        # print(I_hat_t.shape)
+
+        rec_loss = nn.MSELoss()(I_tp1, I_t[t+1])
+        kl_loss = nn.KLDivLoss(reduction="batchmean")(x_t, x_tn1)
+
+        loss = rec_loss + kl_loss
+        total_loss += loss
+
+        x_tn1 = x_t
+
+    print(loss)
 
 
-    def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
-
-        x, y, theta = torch.split(x_t, 1, dim=1)
-
-        x_t = torch.cat((theta, y_t), dim=1)
-
-        loc = self.loc(x_t)
-        scale = self.scale(x_t)
-
-        return {"loc": loc, "scale": scale}
+if __name__ == "__main__":
+    main()
