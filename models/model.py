@@ -8,7 +8,7 @@ from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E, IterativeLoss
 from pixyz.models import Model
 
-from models.distributions import Encoder, Decoder, Transition, Velocity, RotDecoder
+from models.distributions import Encoder, Decoder, Transition, Velocity
 
 from timm.scheduler import CosineLRScheduler
 
@@ -39,25 +39,18 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         self.encoder = torch.compile(Encoder(**encoder_param)).to(device)
         self.decoder = torch.compile(Decoder(**decoder_param)).to(device)
-        self.rot_decoder = torch.compile(RotDecoder(input_dim=1, label_dim=1, output_dim=1, activate_func="ReLU")).to(device)
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
 
         #-------------------------#
-        # Define hyperparams      #
-        #-------------------------#
-        beta = Parameter("beta")
-
-        #-------------------------#
         # Define loss functions   #
         #-------------------------#
-        rot_recon_loss = E(self.transition, LogProb(self.rot_decoder))
         recon_loss = E(self.transition, LogProb(self.decoder))
         kl_loss = KL(self.encoder, self.transition, analytical=True)
-        self.loss_cls = (beta*kl_loss - recon_loss - rot_recon_loss).mean()
+        self.loss_cls = (kl_loss - recon_loss).mean()
 
         self.distributions = nn.ModuleList(
-            [self.encoder, self.decoder, self.transition, self.velocity, self.rot_decoder])
+            [self.encoder, self.decoder, self.transition, self.velocity])
 
         # -------------------------#
         # Set params and optim     #
@@ -82,8 +75,6 @@ class ConditionalNewtonianVAE(Model):
         I = input_var_dict["I"]
         u = input_var_dict["u"]
         y = input_var_dict["y"]
-        R = input_var_dict["R"]
-        beta = input_var_dict["beta"]
 
         total_loss = 0.
 
@@ -92,7 +83,6 @@ class ConditionalNewtonianVAE(Model):
         T, B, C = u.shape
 
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-        # x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y[0]}, reparam=True)["x_t"]
         x_q_tn1 = torch.zeros(B, C).to(self.device)
 
         encoded_pos.append(x_q_tn1)
@@ -111,7 +101,7 @@ class ConditionalNewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1], 'beta': beta, "R_t": R[step+1]})
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1]})
 
             total_loss += step_loss
 

@@ -70,7 +70,6 @@ class Decoder(dist.Normal):
         activation_func = getattr(nn, activate_func)
 
         self.loc = nn.Sequential(
-            # nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
             nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
             activation_func(),
             nn.Conv2d(64, 64, 3, stride=1, padding=1),
@@ -184,35 +183,3 @@ class Velocity(dist.Deterministic):
         # print(f"v_t: {v_t.detach().cpu().numpy()}", end="\r")
 
         return {"v_t": v_t}
-
-
-class RotDecoder(dist.Normal):
-    """
-        p(R_t | x_t, y_t) = Normal(I_t | x_t, y_t)
-    """
-
-    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["R_t"], cond_var=["x_t", "y_t"])
-
-        activation_func = getattr(nn, activate_func)
-
-        self.loc = nn.Sequential(
-            nn.Linear(1 + label_dim, 1),
-        )
-
-        self.scale = nn.Sequential(
-            nn.Linear(1 + label_dim, 1),
-            nn.Softplus(),
-        )
-
-
-    def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
-
-        x, y, theta = torch.split(x_t, 1, dim=1)
-
-        x_t = torch.cat((theta, y_t), dim=1)
-
-        loc = self.loc(x_t)
-        scale = self.scale(x_t)
-
-        return {"loc": loc, "scale": scale}

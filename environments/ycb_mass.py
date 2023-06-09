@@ -110,11 +110,11 @@ class PointMass(base.Task):
     physics.named.data.qpos["shoulder"] = camera_shoulder
 
     # musterd_bottle_x musterd_bottle_y
-    physics.named.data.qpos["musterd_bottle_x"] = camera_x
-    physics.named.data.qpos["musterd_bottle_y"] = camera_y
-    physics.named.data.qpos["musterd_bottle_shoulder"] = camera_shoulder
-    # physics.named.data.qpos["musterd_bottle_x"] = 0.
-    # physics.named.data.qpos["musterd_bottle_y"] = 0.
+    # physics.named.data.qpos["musterd_bottle_x"] = camera_x
+    # physics.named.data.qpos["musterd_bottle_y"] = camera_y
+    # physics.named.data.qpos["musterd_bottle_shoulder"] = camera_shoulder
+    physics.named.data.qpos["musterd_bottle_x"] = 0.
+    physics.named.data.qpos["musterd_bottle_y"] = 0.
 
     super().initialize_episode(physics)
 
