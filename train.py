@@ -15,7 +15,7 @@ from models import ConditionalNewtonianVAE
 from utils import visualize, memory, env
 
 
-def data_loop(epoch, loader, model, device, beta, train_mode=False):
+def data_loop(epoch, loader, model, device, train_mode=False):
     mean_loss = 0
     mean_correlation_x = 0
     mean_correlation_y = 0
@@ -24,47 +24,35 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
     infered_pos = []
 
     for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
-        # label = torch.eye(10)[label.int()].to(device, non_blocking=True).squeeze(2)
         B, T, C = label.size()
-        label = p[:, :, 2].to(device, non_blocking=True).reshape(B, T, 1)
-        # I = I.permute(0, 1, 4, 2, 3)
+        y = torch.ones(B, T, 1).to(device, non_blocking=True)
         batch_size = I.size()[0]
+
+        R = p[:, :, 2].reshape(B, T, 1)
 
         if train_mode:
             loss, pos = model.train({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
-                "y": label.to(device, non_blocking=True).permute(1, 0, 2),
-                "beta": beta})
-
-            mean_loss += loss * batch_size
-            supervised_pos.append(p[:, :-1].detach().cpu().numpy())
-            infered_pos.append(pos.permute(1, 0, 2).detach().cpu().numpy())
-
-            mean_correlation_x += np.corrcoef(
-                    np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 0],
-                    np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 0])[0, 1]
-            mean_correlation_y += np.corrcoef(
-                    np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 1],
-                    np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 1])[0, 1]
-
+                "y": y.to(device, non_blocking=True).permute(1, 0, 2),
+                "R": R.to(device, non_blocking=True).permute(1, 0, 2)})
         else:
             loss, pos = model.test({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
-                "y": label.to(device, non_blocking=True).permute(1, 0, 2),
-                "beta": beta})
+                "y": y.to(device, non_blocking=True).permute(1, 0, 2),
+                "R": R.to(device, non_blocking=True).permute(1, 0, 2)})
 
-            mean_loss += loss * batch_size
-            supervised_pos.append(p[:, :-1].detach().cpu().numpy())
-            infered_pos.append(pos.permute(1, 0, 2).detach().cpu().numpy())
+        mean_loss += loss * batch_size
+        supervised_pos.append(p[:, :-1].detach().cpu().numpy())
+        infered_pos.append(pos.permute(1, 0, 2).detach().cpu().numpy())
 
-            mean_correlation_x += np.corrcoef(
-                    np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 0],
-                    np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 0])[0, 1]
-            mean_correlation_y += np.corrcoef(
-                    np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 1],
-                    np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 1])[0, 1]
+        mean_correlation_x += np.corrcoef(
+                np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 0],
+                np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 0])[0, 1]
+        mean_correlation_y += np.corrcoef(
+                np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 1],
+                np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 1])[0, 1]
 
     mean_loss /= len(loader.dataset)
     mean_correlation_x /= len(loader.dataset)
@@ -112,8 +100,6 @@ def main():
 
 
     best_loss: float = 1e32
-    beta: float = 0.001
-    # beta: float = 1.
 
     with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
 
@@ -128,7 +114,7 @@ def main():
             # Training phase #
             #================#
             train_loss, correlations = data_loop(epoch, train_loader,
-                                   model, cfg["device"], beta, train_mode=True)
+                                   model, cfg["device"], train_mode=True)
             writer.add_scalar('train/loss', train_loss, epoch - 1)
             writer.add_scalar('train/correlation_x', correlations[0], epoch - 1)
             writer.add_scalar('train/correlation_y', correlations[1], epoch - 1)
@@ -137,7 +123,7 @@ def main():
             # Validation phase #
             #==================#
             validation_loss, correlations = data_loop(
-                epoch, validation_loader, model, cfg["device"], beta, train_mode=False)
+                epoch, validation_loader, model, cfg["device"], train_mode=False)
             writer.add_scalar('validation/loss', validation_loss, epoch - 1)
             writer.add_scalar('validation/correlation_x', correlations[0], epoch - 1)
             writer.add_scalar('validation/correlation_y', correlations[1], epoch - 1)
@@ -158,9 +144,6 @@ def main():
                 model.save(f"{save_weight_path}", f"best.weight")
                 best_loss = validation_loss
 
-            if 30 <= epoch and epoch < 60:
-                beta += 0.0333
-
             #==============#
             # Encode video #
             #==============#
@@ -173,10 +156,9 @@ def main():
                 # Test phase #
                 #============#
                 for idx, (I, u, p, label) in enumerate(validation_loader):
-                    # label = torch.eye(10)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
                     B, T, C = label.size()
-                    label = p[:, :, 2].to(cfg["device"], non_blocking=True).reshape(B, T, 1)
-                    # I = I.permute(0, 1, 4, 2, 3)
+                    y = torch.ones(B, T, 1).to(cfg["device"], non_blocking=True)
+                    R = p[:, :, 2].to(cfg["device"], non_blocking=True).reshape(B, T, 1)
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
@@ -184,7 +166,7 @@ def main():
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
-                            label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
+                            y.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
 
 
                         observation_position = p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0]

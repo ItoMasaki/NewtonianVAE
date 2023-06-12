@@ -7,8 +7,8 @@ path: &path datasets/centering_ycb_mass
 
 
 weight:
-  path: results/2023_05_28_16_47_43/weights
-  filename: 80.weight
+  path: results/2023_06_10_16_48_55/weights
+  filename: 300.weight
 
 
 environment:
