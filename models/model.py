@@ -8,7 +8,7 @@ from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E, IterativeLoss
 from pixyz.models import Model
 
-from models.distributions import Encoder, Decoder, Transition, Velocity, RotDecoder
+from models.distributions import Encoder, Decoder, Transition, Velocity
 
 from timm.scheduler import CosineLRScheduler
 
@@ -39,7 +39,6 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         self.encoder = torch.compile(Encoder(**encoder_param)).to(device)
         self.decoder = torch.compile(Decoder(**decoder_param)).to(device)
-        self.rot_decoder = torch.compile(RotDecoder(input_dim=1, label_dim=1, output_dim=1)).to(device)
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
 
@@ -50,13 +49,12 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define loss functions   #
         #-------------------------#
-        rot_recon_loss = E(self.transition, LogProb(self.rot_decoder))
         recon_loss = E(self.transition, LogProb(self.decoder))
         kl_loss = KL(self.encoder, self.transition, analytical=True)
-        self.loss_cls = (kl_loss - recon_loss - rot_recon_loss).mean()
+        self.loss_cls = (kl_loss - recon_loss).mean()
 
         self.distributions = nn.ModuleList(
-            [self.encoder, self.decoder, self.transition, self.velocity, self.rot_decoder])
+            [self.encoder, self.decoder, self.transition, self.velocity])
 
         #-------------------------#
         # Set params and optim    #

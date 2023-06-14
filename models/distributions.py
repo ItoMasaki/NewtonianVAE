@@ -145,41 +145,22 @@ class Velocity(dist.Deterministic):
         self.device = device
         self.use_data_efficiency = use_data_efficiency
 
-        if not self.use_data_efficiency:
-
-            self.coefficient_ABC = nn.Sequential(
-                nn.Linear(2*3, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 6),
-            )
-
-        else:
-            self.A = torch.zeros((1, 3, 3)).to(self.device)
-            self.B = torch.zeros((1, 3, 3)).to(self.device)
-            self.C = torch.diag_embed(torch.ones(1, 3)).to(self.device)
+        self.A = torch.zeros((1, 3, 3)).to(self.device)
+        self.B = torch.zeros((1, 3, 3)).to(self.device)
+        self.C = torch.diag_embed(torch.ones(1, 3)).to(self.device)
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
-        combined_vector = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)
+        _, theta = torch.split(x_tn1, 2, dim=1)
+        xy, _ = torch.split(u_tn1, 2, dim=1)
 
         # For data efficiency
-        if self.use_data_efficiency:
-            A = self.A
-            B = self.B
-            C = self.C
-        else:
-            _A, _B, _C = torch.chunk(self.coefficient_ABC(combined_vector), 3, dim=-1)
-            A = torch.diag_embed(_A)
-            B = torch.diag_embed(-torch.exp(_B))
-            C = torch.diag_embed(torch.exp(_C))
+        C = torch.stack([torch.cos(theta), -torch.sin(theta), torch.sin(theta), torch.cos(theta)], dim=1).view(-1, 2, 2)
+        rotated_xy = torch.einsum("ijk,ik->ij", C, xy)
+        u = torch.cat((rotated_xy, theta), dim=1)
 
         # Dynamics inspired by Newton's motion equation
-        v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum(
-            "ijk,ik->ik", B, v_tn1) + torch.einsum("ijk,ik->ik", C, u_tn1))
+        v_t = v_tn1 + self.delta_time * u# torch.einsum("ijk,ik->ik", C, u_tn1)
 
         # print(f"v_t: {v_t.detach().cpu().numpy()}", end="\r")
 

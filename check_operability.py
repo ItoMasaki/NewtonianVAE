@@ -79,11 +79,15 @@ def main():
             #============#
             action = x_q_t.detach()
 
-            action = action * 0.01
-
+            # action = action * 0.01
             # action[0, 0] = -action[0, 0]
-            # action[0, 1] = -action[0, 1]
-            action[0, 2] = -action[0, 2] * 10.
+            # # action[0, 1] = -action[0, 1]
+            # action[0, 2] = -action[0, 2] * 10.
+
+            action = action * 0.01
+            # action[0, 0] = -action[0, 0]
+            action[0, 1] = -action[0, 1]
+            action[0, 2] = action[0, 2] * 10.
 
 
             print(f"{action.cpu().detach().numpy()}                      ", end="\r")
