@@ -33,16 +33,30 @@ class Encoder(dist.Normal):
             activation_func(),
         )
 
-        self.loc = nn.Sequential(
+        self.loc_pos = nn.Sequential(
             nn.Linear(1024 + label_dim, 512),
             activation_func(),
-            nn.Linear(512, 3),
+            nn.Linear(512, 2),
         )
 
-        self.scale = nn.Sequential(
+        self.loc_rot = nn.Sequential(
             nn.Linear(1024 + label_dim, 512),
             activation_func(),
-            nn.Linear(512, 3),
+            nn.Linear(512, 1),
+            nn.Tanh(),
+        )
+
+        self.scale_pos = nn.Sequential(
+            nn.Linear(1024 + label_dim, 512),
+            activation_func(),
+            nn.Linear(512, 2),
+            nn.Softplus()
+        )
+
+        self.scale_rot = nn.Sequential(
+            nn.Linear(1024 + label_dim, 512),
+            activation_func(),
+            nn.Linear(512, 1),
             nn.Softplus()
         )
 
@@ -53,8 +67,13 @@ class Encoder(dist.Normal):
 
         h = torch.cat((h, y_t), dim=1)
 
-        loc = self.loc(h)
-        scale = self.scale(h)
+        loc_pos = self.loc_pos(h)
+        loc_rot = self.loc_rot(h) * torch.pi
+        loc = torch.cat((loc_pos, loc_rot), dim=1)
+
+        scale = self.scale_pos(h)
+        scale_rot = self.scale_rot(h)
+        scale = torch.cat((scale, scale_rot), dim=1)
 
         return {"loc": loc, "scale": scale}
 
@@ -69,43 +88,62 @@ class Decoder(dist.Normal):
 
         activation_func = getattr(nn, activate_func)
 
+        # self.loc = nn.Sequential(
+        #     # nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
+        #     nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
+        #     activation_func(),
+        #     nn.Conv2d(64, 64, 3, stride=1, padding=1),
+        #     activation_func(),
+        #     nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
+        #     nn.Tanh()
+        # )
+
+        self.up_sample = nn.Sequential(
+            nn.Linear(input_dim, 1024),
+        )
+
         self.loc = nn.Sequential(
-            # nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
-            nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
+            nn.ConvTranspose2d(256, 64, 4, stride=2),
             activation_func(),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1),
+            nn.ConvTranspose2d(64, 32, 4, stride=2),
             activation_func(),
-            nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
+            nn.ConvTranspose2d(32, 16, 5, stride=2),
+            activation_func(),
+            nn.ConvTranspose2d(16, 3, 4, stride=2),
             nn.Tanh()
         )
 
-        self.image_size = 64
-        a = np.linspace(-1, 1, self.image_size)
-        b = np.linspace(-1, 1, self.image_size)
-        x, y = np.meshgrid(a, b)
-        x = x.reshape(self.image_size, self.image_size, 1)
-        y = y.reshape(self.image_size, self.image_size, 1)
-        self.xy = np.concatenate((x, y), axis=-1)
+        # self.image_size = 64
+        # a = np.linspace(-1, 1, self.image_size)
+        # b = np.linspace(-1, 1, self.image_size)
+        # x, y = np.meshgrid(a, b)
+        # x = x.reshape(self.image_size, self.image_size, 1)
+        # y = y.reshape(self.image_size, self.image_size, 1)
+        # self.xy = np.concatenate((x, y), axis=-1)
 
-        self.z_dim = input_dim + label_dim
-        self.z_dim = input_dim
+        # self.z_dim = input_dim + label_dim
+        # self.z_dim = input_dim
 
     def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         device = x_t.device
 
         # x_t = torch.cat((x_t, y_t), dim=1)
 
-        batchsize = len(x_t)
-        xy_tiled = torch.from_numpy(
-            np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(device)
+        h = self.up_sample(x_t)
+        h = h.view(-1, 256, 2, 2)
+        loc = self.loc(h)
 
-        z_tiled = torch.repeat_interleave(
-            x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, self.z_dim)
+        # batchsize = len(x_t)
+        # xy_tiled = torch.from_numpy(
+        #     np.tile(self.xy, (batchsize, 1, 1, 1)).astype(np.float32)).to(device)
 
-        z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
-        z_and_xy = z_and_xy.permute(0, 3, 2, 1)
+        # z_tiled = torch.repeat_interleave(
+        #     x_t, self.image_size*self.image_size, dim=0).view(batchsize, self.image_size, self.image_size, self.z_dim)
 
-        loc = self.loc(z_and_xy)/2.
+        # z_and_xy = torch.cat((z_tiled, xy_tiled), dim=3)
+        # z_and_xy = z_and_xy.permute(0, 3, 2, 1)
+
+        # loc = self.loc(z_and_xy)/2.
 
         return {"loc": loc, "scale": 1.}
 
