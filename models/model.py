@@ -10,7 +10,7 @@ from pixyz.models import Model
 
 from models.distributions import Encoder, Decoder, Transition, Velocity, RotDecoder
 
-from timm.scheduler import CosineLRScheduler
+# from timm.scheduler import CosineLRScheduler
 
 # from distributions import Encoder, Decoder, Transition, Velocity, LabelEncoder
 # import argparse
@@ -69,7 +69,11 @@ class ConditionalNewtonianVAE(Model):
         # Whather to use Automatic Mixture Precision [AMP] #
         #--------------------------------------------------#
         self.use_amp = use_amp
-        self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+        # self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+
+        #-------------------------#
+        # Scheduler               #
+        #-------------------------#
 
         self.clip_norm = clip_grad_norm
         self.clip_value = clip_grad_value
@@ -114,28 +118,25 @@ class ConditionalNewtonianVAE(Model):
 
             x_q_tn1 = x_q_t
 
-        return total_loss/T, torch.stack(encoded_pos, dim=0)
+        return total_loss/T, torch.stack(encoded_pos, dim=0).detach().cpu()
 
     def train(self, train_x_dict={}):
 
         self.distributions.train()
 
-        with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
-            loss, pos = self.calculate_loss(train_x_dict)
+        loss, pos = self.calculate_loss(train_x_dict)
 
         self.optimizer.zero_grad(set_to_none=True)
 
         # backward
-        self.scaler.scale(loss).backward()
+        loss.backward()
 
         if self.clip_norm:
             clip_grad_norm_(self.distributions.parameters(), self.clip_norm)
         if self.clip_value:
             clip_grad_value_(self.distributions.parameters(), self.clip_value)
 
-        # update params
-        self.scaler.step(self.optimizer)
-        self.scaler.update()
+        self.optimizer.step()
 
         return loss.item(), pos
 

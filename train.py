@@ -58,6 +58,7 @@ def data_loop(epoch, loader, model, device, train_mode=False):
     mean_correlation_x /= len(loader.dataset)
     mean_correlation_y /= len(loader.dataset)
 
+
     if train_mode:
         print('\nEpoch: {} Train loss: {:.4f} Correlation X: {} Y: {}'.format(epoch, mean_loss, mean_correlation_x, mean_correlation_y))
     else:
@@ -113,8 +114,8 @@ def main():
             #================#
             # Training phase #
             #================#
-            train_loss, correlations = data_loop(epoch, train_loader,
-                                   model, cfg["device"], train_mode=True)
+            train_loss, correlations = data_loop(
+                    epoch, train_loader, model, cfg["device"], train_mode=True)
             writer.add_scalar('train/loss', train_loss, epoch - 1)
             writer.add_scalar('train/correlation_x', correlations[0], epoch - 1)
             writer.add_scalar('train/correlation_y', correlations[1], epoch - 1)

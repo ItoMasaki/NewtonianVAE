@@ -46,7 +46,7 @@ def main():
         number = 0 # time_step[2]
         label = torch.eye(1)[number].cuda().unsqueeze(0)
 
-        target_observation, state, reward, done = _env.step(torch.zeros(1, 3))
+        target_observation, state, reward, done, depth = _env.step(torch.zeros(1, 3))
         target_x_q_t = model.encoder.sample_mean({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
             "y_t": label})
 
@@ -64,7 +64,7 @@ def main():
             #===================#
             # Get current image #
             #===================#
-            observation, state, reward, done = _env.step(action.cpu())
+            observation, state, reward, done, depth = _env.step(action.cpu())
             # _env.render()
 
             error_from_origin = state.observation["position"][:3]
@@ -83,10 +83,10 @@ def main():
 
             # action[0, 0] = -action[0, 0]
             # action[0, 1] = -action[0, 1]
-            action[0, 2] = -action[0, 2] * 10.
+            action[0, 2] = action[0, 2] * 10.
 
 
-            print(f"{action.cpu().detach().numpy()}                      ", end="\r")
+            print(f"{state.observation['position']}                      ", end="\r")
 
             axis1.set_title("Controlling")
             art1 = axis1.imshow(env.postprocess_observation(observation.detach().numpy(), 8))

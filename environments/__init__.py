@@ -167,7 +167,8 @@ class ControlSuiteEnv():
     number, assets = self.get_model_and_assets()
     self._env.physics.reload_from_xml_string(*assets)
     state = self._env.reset()
-    return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), state, number
+    return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), state, number, \
+            self._env.physics.render(64, 64, camera_id=0, depth=True)
 
   def step(self, action):
     action = action.detach().numpy()
@@ -182,10 +183,13 @@ class ControlSuiteEnv():
     observation = _images_to_observation(
         self._env.physics.render(64, 64, camera_id=0), self.bit_depth)
 
-    return observation, state, reward, done
+    depth = self._env.physics.render(64, 64, camera_id=0, depth=True)
+
+    return observation, state, reward, done, depth
 
   def render(self):
-    cv2.imshow('screen', self._env.physics.render(camera_id=0)[:, :, ::-1])
+    cv2.imshow('screen-depth', self._env.physics.render(camera_id=0, depth=True))
+    cv2.imshow('screen-rgb', self._env.physics.render(camera_id=0)[:, :, ::-1])
     cv2.waitKey(1)
 
   def close(self):

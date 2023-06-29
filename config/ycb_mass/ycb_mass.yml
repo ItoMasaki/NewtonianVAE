@@ -7,8 +7,8 @@ path: &path datasets/centering_ycb_mass
 
 
 weight:
-  path: results/2023_06_10_16_48_55/weights
-  filename: 300.weight
+  path: results/2023_06_20_14_09_00/weights
+  filename: 270.weight
 
 
 environment:
@@ -29,13 +29,13 @@ model:
     input_dim: 3
     label_dim: 1
     output_dim: 3
-    activate_func: ReLU
+    activate_func: Mish
 
   decoder_param:
     input_dim: 3
     label_dim: 1
     output_dim: 3
-    activate_func: LeakyReLU
+    activate_func: Mish
 
   transition_param:
     delta_time: *delta_time
@@ -47,7 +47,7 @@ model:
     device: *device
     use_data_efficiency: True
 
-  optimizer: Adam
+  optimizer: AdamW
   optimizer_params:
     lr: 0.0003
 

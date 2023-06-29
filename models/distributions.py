@@ -23,20 +23,26 @@ class Encoder(dist.Normal):
         activation_func = getattr(nn, activate_func)
 
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, 4, stride=2),
+            nn.Conv2d(3, 32, 5, stride=2),
             activation_func(),
-            nn.Conv2d(32, 64, 4, stride=2),
+            nn.Conv2d(32, 64, 5, stride=2),
             activation_func(),
-            nn.Conv2d(64, 128, 4, stride=2),
+            nn.Conv2d(64, 128, 3, stride=2),
             activation_func(),
-            nn.Conv2d(128, 256, 4, stride=2),
+            nn.Conv2d(128, 256, 3, stride=2),
             activation_func(),
         )
 
-        self.loc = nn.Sequential(
+        self.loc_transition = nn.Sequential(
             nn.Linear(1024 + label_dim, 512),
             activation_func(),
-            nn.Linear(512, 3),
+            nn.Linear(512, 2),
+        )
+
+        self.loc_rotation = nn.Sequential(
+            nn.Linear(1024 + label_dim, 512),
+            activation_func(),
+            nn.Linear(512, 1),
         )
 
         self.scale = nn.Sequential(
@@ -53,7 +59,13 @@ class Encoder(dist.Normal):
 
         h = torch.cat((h, y_t), dim=1)
 
-        loc = self.loc(h)
+        xy = self.loc_transition(h)
+        theta = self.loc_rotation(h)
+        rotation_matrix = torch.stack([torch.cos(theta), -torch.sin(theta), torch.sin(theta), torch.cos(theta)], dim=1).reshape((B, 2, 2))
+
+        rotated_xy = torch.einsum("bij,bj->bi", rotation_matrix, xy)
+
+        loc = torch.cat((rotated_xy, theta), dim=1)
         scale = self.scale(h)
 
         return {"loc": loc, "scale": scale}
@@ -70,12 +82,13 @@ class Decoder(dist.Normal):
         activation_func = getattr(nn, activate_func)
 
         self.loc = nn.Sequential(
-            # nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
-            nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
+            nn.Conv2d(input_dim+label_dim+2, 32, 3, stride=1, padding=1),
             activation_func(),
-            nn.Conv2d(64, 64, 3, stride=1, padding=1),
+            nn.Conv2d(32, 64, 3, stride=1, padding=1),
             activation_func(),
-            nn.Conv2d(64, output_dim, 3, stride=1, padding=1),
+            nn.Conv2d(64, 32, 3, stride=1, padding=1),
+            activation_func(),
+            nn.Conv2d(32, output_dim, 3, stride=1, padding=1),
             nn.Tanh()
         )
 
@@ -88,12 +101,16 @@ class Decoder(dist.Normal):
         self.xy = np.concatenate((x, y), axis=-1)
 
         self.z_dim = input_dim + label_dim
-        self.z_dim = input_dim
 
     def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         device = x_t.device
 
-        # x_t = torch.cat((x_t, y_t), dim=1)
+        x_t = torch.cat((x_t, y_t), dim=1)
+
+        # h = self.up_feature(h)
+        # h = h.reshape((h.shape[0], 256, 2, 2))
+
+        # loc = self.loc(h)/2
 
         batchsize = len(x_t)
         xy_tiled = torch.from_numpy(
@@ -145,41 +162,30 @@ class Velocity(dist.Deterministic):
         self.device = device
         self.use_data_efficiency = use_data_efficiency
 
-        if not self.use_data_efficiency:
-
-            self.coefficient_ABC = nn.Sequential(
-                nn.Linear(2*3, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 2),
-                activation_func(),
-                nn.Linear(2, 6),
-            )
-
-        else:
-            self.A = torch.zeros((1, 3, 3)).to(self.device)
-            self.B = torch.zeros((1, 3, 3)).to(self.device)
-            self.C = torch.diag_embed(torch.ones(1, 3)).to(self.device)
+        self.A = torch.zeros((1, 3, 3)).to(device)
+        self.B = torch.zeros((1, 3, 3)).to(device)
+        self.C = torch.diag_embed(torch.rand(1, 3)).to(device)
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
-        combined_vector = torch.cat([x_tn1, v_tn1, u_tn1], dim=1)
-
         # For data efficiency
-        if self.use_data_efficiency:
-            A = self.A
-            B = self.B
-            C = self.C
-        else:
-            _A, _B, _C = torch.chunk(self.coefficient_ABC(combined_vector), 3, dim=-1)
-            A = torch.diag_embed(_A)
-            B = torch.diag_embed(-torch.exp(_B))
-            C = torch.diag_embed(torch.exp(_C))
+        A = self.A
+        B = self.B
+        C = self.C
+
+        _, theta = torch.split(x_tn1, 2, dim=1)
+        xy_u, _ = torch.split(u_tn1, 2, dim=1)
+        rotation_matrix = torch.stack([torch.cos(theta), -torch.sin(theta), torch.sin(theta), torch.cos(theta)], dim=1).reshape(-1, 2, 2)
+
+        rotated_xy_u = torch.einsum("ijk,ik->ij", rotation_matrix, xy_u)
+
+        u = torch.concatenate((rotated_xy_u, theta), dim=1)
 
         # Dynamics inspired by Newton's motion equation
-        v_t = v_tn1 + self.delta_time * (torch.einsum("ijk,ik->ik", A, x_tn1) + torch.einsum(
-            "ijk,ik->ik", B, v_tn1) + torch.einsum("ijk,ik->ik", C, u_tn1))
+        v_t = v_tn1 + self.delta_time * u
+                # torch.einsum("ijk,ik->ik", A, x_tn1) +
+                # torch.einsum("ijk,ik->ik", B, v_tn1) +
+                # torch.einsum("ijk,ik->ik", C, u_tn1))
 
         # print(f"v_t: {v_t.detach().cpu().numpy()}", end="\r")
 
@@ -198,17 +204,10 @@ class RotDecoder(dist.Normal):
             nn.Linear(1, 1),
         )
 
-        self.scale = nn.Sequential(
-            nn.Linear(1, 1),
-            nn.Softplus(),
-        )
-
-
     def forward(self, x_t: torch.Tensor) -> dict:
 
         x, y, theta = torch.split(x_t, 1, dim=1)
 
         loc = self.loc(theta)
-        scale = self.scale(theta)
 
-        return {"loc": loc, "scale": scale}
+        return {"loc": loc, "scale": 1.}

@@ -10,6 +10,7 @@ from tqdm import tqdm
 from utils import memory, visualize
 from utils.env import postprocess_observation
 from environments import load, ControlSuiteEnv
+from matplotlib import pyplot as plt
 
 
 def main():
@@ -37,8 +38,8 @@ def main():
         print(f"save_filename : {save_filename}")
         print(f"####################################################")
 
-        save_memory = memory.ExperienceReplay(
-            **config["dataset"][mode]["memory"])
+        # save_memory = memory.ExperienceReplay(
+        #     **config["dataset"][mode]["memory"])
 
         for episode in tqdm(range(episode_size)):
             time_step = env.reset()
@@ -58,30 +59,30 @@ def main():
                 action[2] += np.random.uniform(-0.5, 0.5, 1)
                 action = np.clip(action, -1, 1)
 
-                observation, state, reward, done = env.step(torch.from_numpy(action))
+                observation, state, reward, done, depth = env.step(torch.from_numpy(action))
                 # print(state.observation["position"])
-                # env.render()
+                env.render()
 
-                images.append(observation.permute(2, 0, 1)[
-                    np.newaxis, :, :, :])
-                actions.append(action[np.newaxis, :])
+        #         images.append(observation.permute(2, 0, 1)[
+        #             np.newaxis, :, :, :])
+        #         actions.append(action[np.newaxis, :])
 
-                if not_first_flag:
-                    first_rot = state.observation["position"][2]
-                    not_first_flag = False
+        #         if not_first_flag:
+        #             first_rot = state.observation["position"][2]
+        #             not_first_flag = False
 
-                position = state.observation["position"][:3]
-                position[2] -= first_rot
+        #         position = state.observation["position"][:3]
+        #         position[2] -= first_rot
 
-                positions.append(position[np.newaxis, :])
+        #         positions.append(position[np.newaxis, :])
 
-            # print(positions)
+        #     # print(positions)
 
-            save_memory.append(np.concatenate(images),
-                               np.concatenate(actions), np.concatenate(positions), labels, episode)
+        #     save_memory.append(np.concatenate(images),
+        #                        np.concatenate(actions), np.concatenate(positions), labels, episode)
 
-        print()
-        save_memory.save(save_path, save_filename)
+        # print()
+        # save_memory.save(save_path, save_filename)
 
 
 if __name__ == "__main__":
