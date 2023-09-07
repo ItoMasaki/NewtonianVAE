@@ -23,25 +23,23 @@ def data_loop(epoch, loader, model, device, train_mode=False):
     supervised_pos = []
     infered_pos = []
 
-    for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
+    for batch_idx, (I, D, u, p, label) in enumerate(tqdm(loader)):
         B, T, C = label.size()
         y = torch.ones(B, T, 1).to(device, non_blocking=True)
         batch_size = I.size()[0]
 
-        R = p[:, :, 2].reshape(B, T, 1)
-
         if train_mode:
             loss, pos = model.train({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                "D": D.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
-                "y": y.to(device, non_blocking=True).permute(1, 0, 2),
-                "R": R.to(device, non_blocking=True).permute(1, 0, 2)})
+                "y": y.to(device, non_blocking=True).permute(1, 0, 2)})
         else:
             loss, pos = model.test({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                "D": D.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
-                "y": y.to(device, non_blocking=True).permute(1, 0, 2),
-                "R": R.to(device, non_blocking=True).permute(1, 0, 2)})
+                "y": y.to(device, non_blocking=True).permute(1, 0, 2)})
 
         mean_loss += loss * batch_size
         supervised_pos.append(p[:, :-1].detach().cpu().numpy())
@@ -155,10 +153,9 @@ def main():
                 #============#
                 # Test phase #
                 #============#
-                for idx, (I, u, p, label) in enumerate(validation_loader):
+                for idx, (I, D, u, p, label) in enumerate(validation_loader):
                     B, T, C = label.size()
                     y = torch.ones(B, T, 1).to(cfg["device"], non_blocking=True)
-                    R = p[:, :, 2].to(cfg["device"], non_blocking=True).reshape(B, T, 1)
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
@@ -174,10 +171,10 @@ def main():
                         all_latent_position.append(x_q_t.to("cpu").detach().numpy()[0].tolist())
 
                         visualizer.append(
-                            env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
+                            env.postprocess_observation(I[:, :, 0:3].permute(1, 0, 2, 3, 4)[step].to(
                                 "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
-                            env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
-                                0].transpose(1, 2, 0), cfg["bit_depth"]),
+                            env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(
+                                torch.float32).numpy()[0][0:3, :, :].transpose(1, 2, 0), cfg["bit_depth"]),
                             np.array(all_latent_position)
                         )
 

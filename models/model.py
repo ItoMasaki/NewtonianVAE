@@ -6,9 +6,10 @@ from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 
 from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E, IterativeLoss
+from pixyz.distributions import ProductOfNormal as PoE
 from pixyz.models import Model
 
-from models.distributions import Encoder, Decoder, Transition, Velocity, RotDecoder
+from models.distributions import Encoder, Decoder, Transition, Velocity, DepthEncoder, DepthDecoder
 
 from timm.scheduler import CosineLRScheduler
 
@@ -37,9 +38,14 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define models           #
         #-------------------------#
-        self.encoder = torch.compile(Encoder(**encoder_param)).to(device)
-        self.decoder = torch.compile(Decoder(**decoder_param)).to(device)
-        self.rot_decoder = torch.compile(RotDecoder(input_dim=1, label_dim=1, output_dim=1)).to(device)
+        self.color_encoder = Encoder(**encoder_param).to(device)
+        self.color_decoder = Decoder(**decoder_param).to(device)
+
+        self.depth_encoder = DepthEncoder(**encoder_param).to(device)
+        self.depth_decoder = DepthDecoder(**decoder_param).to(device)
+
+        self.encoder = PoE([self.color_encoder, self.depth_encoder]).to(device)
+
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
 
@@ -50,13 +56,13 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define loss functions   #
         #-------------------------#
-        rot_recon_loss = E(self.transition, LogProb(self.rot_decoder))
-        recon_loss = E(self.transition, LogProb(self.decoder))
+        depth_recon_loss = E(self.transition, LogProb(self.depth_decoder))
+        color_recon_loss = E(self.transition, LogProb(self.color_decoder))
         kl_loss = KL(self.encoder, self.transition, analytical=True)
-        self.loss_cls = (kl_loss - recon_loss - rot_recon_loss).mean()
+        self.loss_cls = (kl_loss - color_recon_loss - depth_recon_loss).mean()
 
         self.distributions = nn.ModuleList(
-            [self.encoder, self.decoder, self.transition, self.velocity, self.rot_decoder])
+            [self.color_encoder, self.color_decoder, self.depth_encoder, self.depth_decoder, self.transition, self.velocity])
 
         #-------------------------#
         # Set params and optim    #
@@ -79,9 +85,9 @@ class ConditionalNewtonianVAE(Model):
     def calculate_loss(self, input_var_dict: dict = {}):
 
         I = input_var_dict["I"]
+        D = input_var_dict["D"]
         u = input_var_dict["u"]
         y = input_var_dict["y"]
-        R = input_var_dict["R"]
 
         total_loss = 0.
 
@@ -97,7 +103,7 @@ class ConditionalNewtonianVAE(Model):
         for step in range(1, T-1):
 
             # x^q_{t} ~ p(x^q_{t} | I_{t})
-            x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y[step]}, reparam=True)["x_t"]
+            x_q_t = self.color_encoder.sample({"I_t": I[step], "y_t": y[step]}, reparam=True)["x_t"]
 
             encoded_pos.append(x_q_t)
 
@@ -108,7 +114,7 @@ class ConditionalNewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1], "R_t": R[step+1]})
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1]})
 
             total_loss += step_loss
 
@@ -156,13 +162,13 @@ class ConditionalNewtonianVAE(Model):
             with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
 
                 # x^q_{t-1} ~ p(x^q_{t-1) | I_{t-1))
-                x_q_tn1 = self.encoder.sample_mean({"I_t": I_tn1, "y_t": y})
+                x_q_tn1 = self.color_encoder.sample_mean({"I_t": I_tn1, "y_t": y})
 
                 # x^q_t ~ p(x^q_t | I_t)
-                x_q_t = self.encoder.sample_mean({"I_t": I_t, "y_t": y})
+                x_q_t = self.color_encoder.sample_mean({"I_t": I_t, "y_t": y})
 
                 # p(I_t | x_t)
-                I_t = self.decoder.sample_mean({"x_t": x_q_t, "y_t": y})
+                I_t = self.color_decoder.sample_mean({"x_t": x_q_t, "y_t": y})
 
                 # v_t = (x^q_t - x^q_{t-1})/dt
                 v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -175,7 +181,7 @@ class ConditionalNewtonianVAE(Model):
                     {"x_tn1": x_q_t, "v_t": v_tp1})
 
                 # p(I_{t+1} | x_{t+1})
-                I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1, "y_t": y})
+                I_tp1 = self.color_decoder.sample_mean({"x_t": x_p_tp1, "y_t": y})
 
         return I_t, I_tp1, x_q_t, x_p_tp1
 

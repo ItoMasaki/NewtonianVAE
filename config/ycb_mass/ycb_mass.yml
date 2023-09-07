@@ -34,7 +34,7 @@ model:
   decoder_param:
     input_dim: 3
     label_dim: 1
-    output_dim: 3
+    output_dim: 4
     activate_func: LeakyReLU
 
   transition_param:

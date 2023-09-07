@@ -8,7 +8,8 @@
   </option>
 
   <default>
-    <joint type="hinge" axis="0 0 1" limited="true" range="-.29 .29" damping="1"/>
+    <!--joint type="hinge" axis="0 0 1" limited="true" range="-.29 .29" damping="1"/-->
+    <joint type="hinge" axis="1 1 1" limited="false" damping="1"/>
     <motor gear=".1" ctrlrange="-1 1" ctrllimited="true"/>
   </default>
 
@@ -18,21 +19,21 @@
 
   <worldbody>
     <!--geom name="ground" type="plane" pos="0 0 0" size="3. 3. .1" material="grid"/-->
-    <geom name="ground" type="plane" size="2 2 0.1" pos="0 0 0" rgba="0.1 0.9 0.1 1"/>
+    <geom name="ground" type="plane" size="3 3 0.1" pos="0 0 0" rgba="0.1 0.9 0.1 1"/>
 
-    <body name="camera" pos="0 0 .5">
-      <light name="light" pos="0 0 1"/>
-      <camera name="cam0" pos="0 0 .5" quat="1 0 0 0"/>
+    <body name="camera" pos="0 0 0">
+      <light name="light" pos="0 0 0"/>
+      <camera name="cam0" pos="0 0 0" quat="1 0 0 0"/>
       <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0"/>
       <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0"/>
-      <joint name="shoulder" limited="false"/>
+      <joint name="root_z" type="slide"  pos="0 0 0" axis="0 0 1"/>
       <geom name="cam" pos="0 0 1.75" material="target" type="sphere" size=".015"/>
     </body>
 
-    <body name="target_object" pos="0 0 0.01">
+    <body name="target_object" pos="0 0 0">
       <joint name="musterd_bottle_x" pos="0 0 0" type="slide" axis='1 0 0'/>
       <joint name="musterd_bottle_y" pos="0 0 0" type="slide" axis='0 1 0'/>
-      <joint name="musterd_bottle_shoulder" limited="false"/>
+      <joint name="musterd_bottle_z" pos="0 0 0" type="slide" axis='0 0 1'/>
       <include file="environments/includes/body_006_mustard_bottle.xml"/>
     </body>
 
@@ -42,16 +43,23 @@
     <fixed name="t1">
       <joint joint="root_x" coef="1"/>
       <joint joint="root_y" coef="0"/>
+      <joint joint="root_z" coef="0"/>
     </fixed>
     <fixed name="t2">
       <joint joint="root_x" coef="0"/>
       <joint joint="root_y" coef="1"/>
+      <joint joint="root_z" coef="0"/>
+    </fixed>
+    <fixed name="t3">
+      <joint joint="root_x" coef="0"/>
+      <joint joint="root_y" coef="0"/>
+      <joint joint="root_z" coef="1"/>
     </fixed>
   </tendon>
 
   <actuator>
     <motor name="t1" tendon="t1"/>
     <motor name="t2" tendon="t2"/>
-    <motor name="shoulder" joint="shoulder"/>
+    <motor name="t3" tendon="t3"/>
   </actuator>
 </mujoco>

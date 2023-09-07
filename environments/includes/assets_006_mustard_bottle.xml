@@ -7,7 +7,7 @@
 ====================================================== -©vk©-->
 <mujocoinclude>
     <asset>
-        <mesh name="006_mustard_bottle" file="environments/meshes/006_mustard_bottle.msh" scale=".5 .5 .5"/>
+        <mesh name="006_mustard_bottle" file="environments/meshes/006_mustard_bottle.msh" scale="1. 1. 1."/>
         <texture name="006_mustard_bottle" type="2d" file="environments/textures/006_mustard_bottle.png"/>
         <material name="006_mustard_bottle" texture="006_mustard_bottle"/>
     </asset>
