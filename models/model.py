@@ -43,14 +43,13 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define hyperparams      #
         #-------------------------#
-        beta = Parameter("beta")
 
         #-------------------------#
         # Define loss functions   #
         #-------------------------#
         recon_loss = E(self.transition, LogProb(self.decoder))
         kl_loss = KL(self.encoder, self.transition)
-        self.loss_cls = (beta*kl_loss - recon_loss).mean()
+        self.loss_cls = (kl_loss - recon_loss).mean()
 
         self.distributions = nn.ModuleList(
             [self.encoder, self.decoder, self.transition, self.velocity])
@@ -78,7 +77,6 @@ class ConditionalNewtonianVAE(Model):
         I = input_var_dict["I"]
         u = input_var_dict["u"]
         y = input_var_dict["y"]
-        beta = input_var_dict["beta"]
 
         total_loss = 0.
 
@@ -99,7 +97,7 @@ class ConditionalNewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1], 'beta': beta})
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1]})
 
             total_loss += step_loss
 
