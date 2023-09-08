@@ -105,7 +105,6 @@ class Decoder(dist.Normal):
 
         return {"loc": loc, "scale": 1.}
 
-
 class Transition(dist.Normal):
     """
       p(x_t | x_{t-1}, u_{t-1}; v_t) = N(x_t | x_{t-1} + ∆t·v_t, σ^2)
@@ -116,11 +115,30 @@ class Transition(dist.Normal):
 
         self.delta_time = delta_time
 
+        self.sigma = nn.Parameter(torch.ones(2, requires_grad=True))
+        self.acivation_func = nn.Softplus()
+
     def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor) -> dict:
 
         x_t = x_tn1 + self.delta_time * v_t
 
-        return {"loc": x_t, "scale": 0.001}
+        return {"loc": x_t, "scale": self.acivation_func(self.sigma) + 0.00000000000001}
+
+# class Transition(dist.Normal):
+#     """
+#       p(x_t | x_{t-1}, u_{t-1}; v_t) = N(x_t | x_{t-1} + ∆t·v_t, σ^2)
+#     """
+# 
+#     def __init__(self, delta_time: float):
+#         super().__init__(var=["x_t"], cond_var=["x_tn1", "v_t"])
+# 
+#         self.delta_time = delta_time
+# 
+#     def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor) -> dict:
+# 
+#         x_t = x_tn1 + self.delta_time * v_t
+# 
+#         return {"loc": x_t, "scale": 0.001}
 
 
 class Velocity(dist.Deterministic):
