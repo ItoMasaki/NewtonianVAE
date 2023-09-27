@@ -36,7 +36,7 @@ def main():
     model = ConditionalNewtonianVAE(**cfg["model"])
     model.load(**cfg["weight"])
 
-    for episode in tqdm(range(65, 90)):
+    for episode in tqdm(range(22, 90)):
         frames = []
         #==================#
         # Get target image #
@@ -68,19 +68,19 @@ def main():
             # y = model.label_encoder.sample({"I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].cuda()})["y_t"]
 
             x_q_t = model.encoder.sample_mean({
-                "I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
-                "y_t": label})
-            reconstructed_image = model.decoder.sample_mean({"x_t": x_q_t, "y_t": label})
+                "I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"])})
+            reconstructed_image = model.decoder.sample_mean({"x_t": x_q_t})
 
             #============#
             # Get action #
             #============#
             # action = (target_x_q_t - x_q_t).detach()
-            action =  -x_q_t.detach()/10.
+            action = -x_q_t.detach()/50.
 
-            action = torch.flip(action, dims=[1])
+            # action = torch.flip(action, dims=[1])
             # action = -action
             # action[0, 1] = -action[0, 1]
+            action[0, 0] = -action[0, 0]
 
             art1 = axis1.imshow(env.postprocess_observation(target_observation.detach().numpy(), 8))
             art2 = axis2.imshow(env.postprocess_observation(observation.detach().numpy(), 8))
@@ -91,6 +91,7 @@ def main():
             frames.append([art1, art2, bar1, bar2, art4])
 
         error = np.sqrt(np.sum(state.observation["position"]**2))
+        print(f"{error}")
 
         ani = animation.ArtistAnimation(fig, frames, interval=10)
         ani.save(f"{save_root_path}/output.episode_{episode}.error_{error}.mp4", writer="ffmpeg")

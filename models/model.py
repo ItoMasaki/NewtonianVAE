@@ -76,7 +76,6 @@ class ConditionalNewtonianVAE(Model):
 
         I = input_var_dict["I"]
         u = input_var_dict["u"]
-        y = input_var_dict["y"]
 
         total_loss = 0.
 
@@ -89,7 +88,7 @@ class ConditionalNewtonianVAE(Model):
         for step in range(1, T-1):
 
             # x^q_{t} ~ p(x^q_{t} | I_{t})
-            x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y[step]}, reparam=True)["x_t"]
+            x_q_t = self.encoder.sample({"I_t": I[step]}, reparam=True)["x_t"]
 
             # v_t = (x^q_{t} - x^q_{t-1})/dt
             v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -98,7 +97,7 @@ class ConditionalNewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1]})
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1]})
 
             total_loss += step_loss
 
@@ -141,20 +140,20 @@ class ConditionalNewtonianVAE(Model):
 
         return loss.item()
 
-    def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor, y: torch.Tensor):
+    def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor):
         self.distributions.eval()
 
         with torch.no_grad():
             with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
 
                 # x^q_{t-1} ~ p(x^q_{t-1) | I_{t-1))
-                x_q_tn1 = self.encoder.sample_mean({"I_t": I_tn1, "y_t": y})
+                x_q_tn1 = self.encoder.sample_mean({"I_t": I_tn1})
 
                 # x^q_t ~ p(x^q_t | I_t)
-                x_q_t = self.encoder.sample_mean({"I_t": I_t, "y_t": y})
+                x_q_t = self.encoder.sample_mean({"I_t": I_t})
 
                 # p(I_t | x_t)
-                I_t = self.decoder.sample_mean({"x_t": x_q_t, "y_t": y})
+                I_t = self.decoder.sample_mean({"x_t": x_q_t})
 
                 # v_t = (x^q_t - x^q_{t-1})/dt
                 v_t = (x_q_t - x_q_tn1)/self.delta_time
@@ -167,7 +166,7 @@ class ConditionalNewtonianVAE(Model):
                     {"x_tn1": x_q_t, "v_t": v_tp1})
 
                 # p(I_{t+1} | x_{t+1})
-                I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1, "y_t": y})
+                I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1})
 
         return I_t, I_tp1, x_q_t, x_p_tp1
 
