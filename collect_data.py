@@ -64,7 +64,7 @@ def main():
 
                 observation, depth, state, reward, done = env.step(torch.from_numpy(action))
                 # print(state.observation["position"])
-                # env.render()
+                env.render()
 
                 images.append(observation.permute(2, 0, 1)[
                     np.newaxis, :, :, :])
@@ -79,7 +79,8 @@ def main():
 
                 # time.sleep(.1)
 
-            # print(positions)
+            # print(np.concatenate(positions).shape)
+            # print(np.concatenate(depthes).shape)
 
             save_memory.append(
                     np.concatenate(images),

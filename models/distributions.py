@@ -11,19 +11,29 @@ from pixyz.utils import epsilon
 from torchvision import models
 
 
-
 class Encoder(dist.Normal):
     """
-        q(x_t | I_t, y_t) = Normal(x_t | I_t, y_t)
+        q(x_t | I_t, D_t, y_t) = Normal(x_t | I_t, D_t, y_t)
     """
 
-    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["x_t"], cond_var=["I_t", "y_t"], name="q")
+    def __init__(self, color_dim: int, depth_dim: int, label_dim: int, output_dim: int, activate_func: str):
+        super().__init__(var=["x_t"], cond_var=["I_t", "D_t", "y_t"], name="q")
 
         activation_func = getattr(nn, activate_func)
 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(input_dim, 32, 4, stride=2),
+        self.color_encoder = nn.Sequential(
+            nn.Conv2d(color_dim, 32, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(32, 64, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(64, 128, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(128, 256, 4, stride=2),
+            activation_func(),
+        )
+
+        self.depth_encoder = nn.Sequential(
+            nn.Conv2d(depth_dim, 32, 4, stride=2),
             activation_func(),
             nn.Conv2d(32, 64, 4, stride=2),
             activation_func(),
@@ -46,57 +56,12 @@ class Encoder(dist.Normal):
             nn.Softplus()
         )
 
-    def forward(self, I_t: torch.Tensor, y_t: torch.Tensor) -> dict:
-        h = self.encoder(I_t)
-        B, C, W, H = h.shape
-        h = h.reshape((B, C*W*H))
+    def forward(self, I_t: torch.Tensor, D_t: torch.Tensor, y_t: torch.Tensor) -> dict:
+        h_color = self.color_encoder(I_t)
+        B, C, W, H = h_color.shape
+        h_color = h_color.reshape((B, C*W*H))
 
-        h = torch.cat((h, y_t), dim=1)
-
-        loc = self.loc(h)
-        scale = self.scale(h)
-
-        return {"loc": loc, "scale": scale}
-
-
-class DepthEncoder(dist.Normal):
-    """
-        q(x_t | I_t, y_t) = Normal(x_t | I_t, y_t)
-    """
-
-    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["x_t"], cond_var=["D_t"], name="q")
-
-        activation_func = getattr(nn, activate_func)
-
-        self.encoder = nn.Sequential(
-            nn.Conv2d(input_dim, 32, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(32, 64, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(64, 128, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(128, 256, 4, stride=2),
-            activation_func(),
-        )
-
-        self.loc = nn.Sequential(
-            nn.Linear(1024, 512),
-            activation_func(),
-            nn.Linear(512, 3),
-        )
-
-        self.scale = nn.Sequential(
-            nn.Linear(1024, 512),
-            activation_func(),
-            nn.Linear(512, 3),
-            nn.Softplus()
-        )
-
-    def forward(self, D_t: torch.Tensor) -> dict:
-        h = self.encoder(D_t)
-        B, C, W, H = h.shape
-        h = h.reshape((B, C*W*H))
+        h = torch.cat((h_color, y_t), dim=1)
 
         loc = self.loc(h)
         scale = self.scale(h)

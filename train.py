@@ -162,6 +162,8 @@ def main():
                         I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
+                            D.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                            D.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
                             y.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
 

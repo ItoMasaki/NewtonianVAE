@@ -46,9 +46,10 @@ def main():
         number = 0 # time_step[2]
         label = torch.eye(1)[number].cuda().unsqueeze(0)
 
-        target_observation, state, reward, done = _env.step(torch.zeros(1, 3))
-        target_x_q_t = model.encoder.sample_mean({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
-            "y_t": label})
+        _env.step(torch.zeros(1, 3))
+        # target_observation, state, reward, done = _env.step(torch.zeros(1, 3))
+        # target_x_q_t = model.encoder.sample_mean({"I_t": target_observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
+        #     "y_t": label})
 
         _env = ControlSuiteEnv(**cfg["environment"])
         time_step = _env.reset()
@@ -64,15 +65,18 @@ def main():
             #===================#
             # Get current image #
             #===================#
-            observation, state, reward, done = _env.step(action.cpu())
+            color, depth, state, reward, done = _env.step(action.cpu())
             # _env.render()
 
             error_from_origin = state.observation["position"][:3]
 
-            x_q_t = model.encoder.sample_mean({
-                "I_t": observation.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
+            depth = torch.from_numpy(depth.copy()).float()
+
+            x_q_t = model.color_encoder.sample_mean({
+                "I_t": color.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
+                "D_t": depth[np.newaxis, np.newaxis, :, :].to(cfg["device"]),
                 "y_t": label})
-            reconstructed_image = model.decoder.sample_mean({"x_t": x_q_t, "y_t": label})
+            reconstructed_image = model.color_decoder.sample_mean({"x_t": x_q_t, "y_t": label})
 
             #============#
             # Get action #
@@ -83,13 +87,13 @@ def main():
 
             # action[0, 0] = -action[0, 0]
             # action[0, 1] = -action[0, 1]
-            action[0, 2] = -action[0, 2] * 10.
+            # action[0, 2] = -action[0, 2]
 
 
             print(f"{action.cpu().detach().numpy()}                      ", end="\r")
 
             axis1.set_title("Controlling")
-            art1 = axis1.imshow(env.postprocess_observation(observation.detach().numpy(), 8))
+            art1 = axis1.imshow(env.postprocess_observation(color.detach().numpy(), 8))
 
             axis2.set_title("Reconstructed")
             art2 = axis2.imshow(env.postprocess_observation(reconstructed_image[0].permute(1, 2, 0).cpu().detach().numpy(), 8))
