@@ -33,16 +33,10 @@ class Encoder(dist.Normal):
             activation_func(),
         )
 
-        self.loc_transition = nn.Sequential(
+        self.loc = nn.Sequential(
             nn.Linear(1024 + label_dim, 512),
             activation_func(),
-            nn.Linear(512, 2),
-        )
-
-        self.loc_rotation = nn.Sequential(
-            nn.Linear(1024 + label_dim, 512),
-            activation_func(),
-            nn.Linear(512, 1),
+            nn.Linear(512, 3),
         )
 
         self.scale = nn.Sequential(
@@ -59,13 +53,8 @@ class Encoder(dist.Normal):
 
         h = torch.cat((h, y_t), dim=1)
 
-        xy = self.loc_transition(h)
-        theta = self.loc_rotation(h)
-        rotation_matrix = torch.stack([torch.cos(theta), -torch.sin(theta), torch.sin(theta), torch.cos(theta)], dim=1).reshape((B, 2, 2))
+        loc = self.loc(h)
 
-        rotated_xy = torch.einsum("bij,bj->bi", rotation_matrix, xy)
-
-        loc = torch.cat((rotated_xy, theta), dim=1)
         scale = self.scale(h)
 
         return {"loc": loc, "scale": scale}

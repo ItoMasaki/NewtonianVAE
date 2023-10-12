@@ -86,7 +86,7 @@ def main():
             action[0, 2] = action[0, 2] * 10.
 
 
-            print(f"{state.observation['position']}                      ", end="\r")
+            print(f"{state.observation['position'][:3]}                      ", end="\r")
 
             axis1.set_title("Controlling")
             art1 = axis1.imshow(env.postprocess_observation(observation.detach().numpy(), 8))

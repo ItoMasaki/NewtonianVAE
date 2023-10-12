@@ -7,7 +7,7 @@ path: &path datasets/centering_ycb_mass
 
 
 weight:
-  path: results/2023_06_20_14_09_00/weights
+  path: results/store/rotation_loss/weights
   filename: 270.weight
 
 
