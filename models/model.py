@@ -9,7 +9,7 @@ from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation 
 from pixyz.distributions import ProductOfNormal as PoE
 from pixyz.models import Model
 
-from models.distributions import Encoder, Decoder, Transition, Velocity
+from models.distributions import Encoder, Decoder, Transition, Velocity, RotDecoder
 
 from timm.scheduler import CosineLRScheduler
 
@@ -25,6 +25,7 @@ class ConditionalNewtonianVAE(Model):
     def __init__(self,
                  encoder_param: dict = {},
                  decoder_param: dict = {},
+                 rot_decoder_param: dict = {},
                  transition_param: dict = {},
                  velocity_param: dict = {},
                  optimizer: str = "Adam",
@@ -41,10 +42,7 @@ class ConditionalNewtonianVAE(Model):
         self.color_encoder = Encoder(**encoder_param).to(device)
         self.color_decoder = Decoder(**decoder_param).to(device)
 
-        # self.depth_encoder = DepthEncoder(**encoder_param).to(device)
-        # self.depth_decoder = DepthDecoder(**decoder_param).to(device)
-
-        # self.encoder = PoE([self.color_encoder, self.depth_encoder]).to(device)
+        self.rot_decoder = RotDecoder(**rot_decoder_param).to(device)
 
         self.transition = Transition(**transition_param).to(device)
         self.velocity = Velocity(**velocity_param).to(device)
@@ -56,14 +54,11 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define loss functions   #
         #-------------------------#
-        # depth_recon_loss = E(self.transition, LogProb(self.depth_decoder))
         color_recon_loss = E(self.transition, LogProb(self.color_decoder))
+        rot_recon_loss = E(self.transition, LogProb(self.rot_decoder))
         kl_loss = KL(self.color_encoder, self.transition, analytical=True)
-        # self.loss_cls = (kl_loss - color_recon_loss - depth_recon_loss).mean()
-        self.loss_cls = (kl_loss - color_recon_loss).mean()
+        self.loss_cls = (kl_loss - color_recon_loss - rot_recon_loss).mean()
 
-        # self.distributions = nn.ModuleList(
-        #     [self.color_encoder, self.color_decoder, self.depth_encoder, self.depth_decoder, self.transition, self.velocity])
         self.distributions = nn.ModuleList(
             [self.color_encoder, self.color_decoder, self.transition, self.velocity])
 
@@ -88,7 +83,7 @@ class ConditionalNewtonianVAE(Model):
     def calculate_loss(self, input_var_dict: dict = {}):
 
         I = input_var_dict["I"]
-        D = input_var_dict["D"]
+        R = input_var_dict["R"]
         u = input_var_dict["u"]
         y = input_var_dict["y"]
 
@@ -106,7 +101,7 @@ class ConditionalNewtonianVAE(Model):
         for step in range(1, T-1):
 
             # x^q_{t} ~ p(x^q_{t} | I_{t})
-            x_q_t = self.color_encoder.sample({"I_t": I[step], "y_t": y[step], "D_t": D[step]}, reparam=True)["x_t"]
+            x_q_t = self.color_encoder.sample({"I_t": I[step], "y_t": y[step]}, reparam=True)["x_t"]
 
             encoded_pos.append(x_q_t)
 
@@ -117,7 +112,8 @@ class ConditionalNewtonianVAE(Model):
             v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
 
             # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1], 'D_t': D[step+1]})
+            step_loss, variables = self.loss_cls(
+                    {'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[step+1], 'R_t': R[step+1]})
 
             total_loss += step_loss
 
@@ -165,10 +161,10 @@ class ConditionalNewtonianVAE(Model):
             with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
 
                 # x^q_{t-1} ~ p(x^q_{t-1) | I_{t-1))
-                x_q_tn1 = self.color_encoder.sample_mean({"I_t": I_tn1, "y_t": y, "D_t": D_tn1})
+                x_q_tn1 = self.color_encoder.sample_mean({"I_t": I_tn1, "y_t": y})
 
                 # x^q_t ~ p(x^q_t | I_t)
-                x_q_t = self.color_encoder.sample_mean({"I_t": I_t, "y_t": y, "D_t": D_t})
+                x_q_t = self.color_encoder.sample_mean({"I_t": I_t, "y_t": y})
 
                 # p(I_t | x_t)
                 I_t = self.color_decoder.sample_mean({"x_t": x_q_t, "y_t": y})

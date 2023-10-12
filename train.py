@@ -26,20 +26,21 @@ def data_loop(epoch, loader, model, device, train_mode=False):
     for batch_idx, (I, D, u, p, label) in enumerate(tqdm(loader)):
         B, T, C = label.size()
         y = torch.ones(B, T, 1).to(device, non_blocking=True)
+        R = p[:, :, 3].reshape(B, T, 1)
         batch_size = I.size()[0]
 
         if train_mode:
             loss, pos = model.train({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
-                "D": D.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
-                "y": y.to(device, non_blocking=True).permute(1, 0, 2)})
+                "y": y.to(device, non_blocking=True).permute(1, 0, 2),
+                "R": R.to(device, non_blocking=True).permute(1, 0, 2)})
         else:
             loss, pos = model.test({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
-                "D": D.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
-                "y": y.to(device, non_blocking=True).permute(1, 0, 2)})
+                "y": y.to(device, non_blocking=True).permute(1, 0, 2),
+                "R": R.to(device, non_blocking=True).permute(1, 0, 2)})
 
         mean_loss += loss * batch_size
         supervised_pos.append(p[:, :-1].detach().cpu().numpy())

@@ -15,7 +15,7 @@
 
   <include file="environments/includes/defaults_ycb.xml"/>
   <include file="environments/includes/assets_006_mustard_bottle.xml"/>
-  <include file="environments/includes/assets_005_tomato_soup_can.xml"/>
+  <!--include file="environments/includes/assets_005_tomato_soup_can.xml"/-->
 
   <worldbody>
     <!--geom name="ground" type="plane" pos="0 0 0" size="3. 3. .1" material="grid"/-->
@@ -27,6 +27,8 @@
       <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0"/>
       <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0"/>
       <joint name="root_z" type="slide"  pos="0 0 0" axis="0 0 1"/>
+      <!--joint name="shoulder" limited="false"/-->
+      <joint axis="0 0 1" name="shoulder" pos="0.0 0.0 0.0" limited="false" type="hinge"/>
       <geom name="cam" pos="0 0 1.75" material="target" type="sphere" size=".015"/>
     </body>
 
@@ -61,5 +63,6 @@
     <motor name="t1" tendon="t1"/>
     <motor name="t2" tendon="t2"/>
     <motor name="t3" tendon="t3"/>
+    <motor name="shoulder" joint="shoulder"/>
   </actuator>
 </mujoco>

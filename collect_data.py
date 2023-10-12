@@ -50,16 +50,18 @@ def main():
             depthes = []
             actions = []
             positions = []
-            action = np.zeros(3)
+            action = np.zeros(4)
 
             for _ in range(sequence_size):
                 action[0] += np.random.uniform(-0.01, 0.01, 1)
                 action[1] += np.random.uniform(-0.01, 0.01, 1)
-                action[2] += np.random.uniform(-0.01, 0.02, 1)
+                action[2] += np.random.uniform(-0.01, 0.015, 1)
+                action[3] += np.random.uniform(-0.5, 0.5, 1)
 
                 action[0] = np.clip(action[0], -2.00, 2.00)
                 action[1] = np.clip(action[1], -2.00, 2.00)
                 action[2] = np.clip(action[2], -0.000, 2.00)
+                action[3] = np.clip(action[3], -1, 1)
                 # print(action)
 
                 observation, depth, state, reward, done = env.step(torch.from_numpy(action))
@@ -73,7 +75,7 @@ def main():
 
                 actions.append(action[np.newaxis, :])
 
-                position = state.observation["position"][:3]
+                position = state.observation["position"][:4]
 
                 positions.append(position[np.newaxis, :])
 

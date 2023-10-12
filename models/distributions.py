@@ -17,7 +17,7 @@ class Encoder(dist.Normal):
     """
 
     def __init__(self, color_dim: int, depth_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["x_t"], cond_var=["I_t", "D_t", "y_t"], name="q")
+        super().__init__(var=["x_t"], cond_var=["I_t", "y_t"], name="q")
 
         activation_func = getattr(nn, activate_func)
 
@@ -32,31 +32,20 @@ class Encoder(dist.Normal):
             activation_func(),
         )
 
-        self.depth_encoder = nn.Sequential(
-            nn.Conv2d(depth_dim, 32, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(32, 64, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(64, 128, 4, stride=2),
-            activation_func(),
-            nn.Conv2d(128, 256, 4, stride=2),
-            activation_func(),
-        )
-
         self.loc = nn.Sequential(
             nn.Linear(1024 + label_dim, 512),
             activation_func(),
-            nn.Linear(512, 3),
+            nn.Linear(512, output_dim),
         )
 
         self.scale = nn.Sequential(
             nn.Linear(1024 + label_dim, 512),
             activation_func(),
-            nn.Linear(512, 3),
+            nn.Linear(512, output_dim),
             nn.Softplus()
         )
 
-    def forward(self, I_t: torch.Tensor, D_t: torch.Tensor, y_t: torch.Tensor) -> dict:
+    def forward(self, I_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         h_color = self.color_encoder(I_t)
         B, C, W, H = h_color.shape
         h_color = h_color.reshape((B, C*W*H))
@@ -120,39 +109,23 @@ class Decoder(dist.Normal):
         return {"loc": loc, "scale": 1.}
 
 
-class DepthDecoder(dist.Normal):
+class RotDecoder(dist.Normal):
     """
-      p(I_t | x_t) = N(I_t | x_t)
+        p(R_t | x_t, y_t) = Normal(I_t | x_t, y_t)
     """
 
-    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["D_t"], cond_var=["x_t"])
-
-        activation_func = getattr(nn, activate_func)
-
-        self.up_size_vector = nn.Sequential(
-            nn.Linear(3, 1000),
-            activation_func(),
-        )
+    def __init__(self, input_dim: int, label_dim: int, output_dim: int):
+        super().__init__(var=["R_t"], cond_var=["x_t"])
 
         self.loc = nn.Sequential(
-            nn.ConvTranspose2d(1000, 512, 3, stride=1),
-            activation_func(),
-            nn.ConvTranspose2d(512, 256, 6, stride=4),
-            activation_func(),
-            nn.ConvTranspose2d(256, 128, 4, stride=2),
-            activation_func(),
-            nn.ConvTranspose2d(128, 1, 6, stride=2),
+            nn.Linear(1, 1),
         )
 
     def forward(self, x_t: torch.Tensor) -> dict:
-        batchsize = len(x_t)
 
-        vector = self.up_size_vector(x_t)
+        x, y, z, theta = torch.split(x_t, 1, dim=1)
 
-        reshaped_vector = vector.reshape((batchsize, 1000, 1, 1))
-
-        loc = self.loc(reshaped_vector)
+        loc = self.loc(theta)
 
         return {"loc": loc, "scale": 1.}
 
@@ -162,12 +135,12 @@ class Transition(dist.Normal):
       p(x_t | x_{t-1}, u_{t-1}; v_t) = N(x_t | x_{t-1} + ∆t·v_t, σ^2)
     """
 
-    def __init__(self, delta_time: float):
+    def __init__(self, delta_time: float, state_dim: int):
         super().__init__(var=["x_t"], cond_var=["x_tn1", "v_t"])
 
         self.delta_time = delta_time
 
-        self.sigma = nn.Parameter(torch.ones(3, requires_grad=True))
+        self.sigma = nn.Parameter(torch.ones(state_dim, requires_grad=True))
         self.acivation_func = nn.Softplus()
 
     def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor) -> dict:
@@ -183,7 +156,7 @@ class Velocity(dist.Deterministic):
       with  [A, log(−B), log C] = diag(f(x_{t-1}, v_{t-1}, u_{t-1}))
     """
 
-    def __init__(self, batch_size: int, delta_time: float, activate_func: str, device: str, use_data_efficiency: bool):
+    def __init__(self, batch_size: int, state_dim: int, delta_time: float, activate_func: str, device: str, use_data_efficiency: bool):
         super().__init__(var=["v_t"], cond_var=[
             "x_tn1", "v_tn1", "u_tn1"], name="f")
 
@@ -192,9 +165,9 @@ class Velocity(dist.Deterministic):
         self.device = device
         self.use_data_efficiency = use_data_efficiency
 
-        self.A = torch.zeros((1, 3, 3)).to(self.device)
-        self.B = torch.zeros((1, 3, 3)).to(self.device)
-        self.C = torch.diag_embed(torch.ones(1, 3)).to(self.device)
+        self.A = torch.zeros((1, state_dim, state_dim)).to(self.device)
+        self.B = torch.zeros((1, state_dim, state_dim)).to(self.device)
+        self.C = torch.diag_embed(torch.ones(1, state_dim)).to(self.device)
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
