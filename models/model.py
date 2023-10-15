@@ -60,7 +60,7 @@ class ConditionalNewtonianVAE(Model):
         self.loss_cls = (kl_loss - color_recon_loss - rot_recon_loss).mean()
 
         self.distributions = nn.ModuleList(
-            [self.color_encoder, self.color_decoder, self.transition, self.velocity])
+            [self.color_encoder, self.color_decoder, self.rot_decoder, self.transition, self.velocity])
 
         #-------------------------#
         # Set params and optim    #

@@ -50,23 +50,42 @@ def main():
             depthes = []
             actions = []
             positions = []
+            position = np.zeros(4)
+            height = 0.
             action = np.zeros(4)
 
+            first_rot = 0.
+            not_first_flag = True
+
             for _ in range(sequence_size):
-                action[0] += np.random.uniform(-0.01, 0.01, 1)
-                action[1] += np.random.uniform(-0.01, 0.01, 1)
-                action[2] += np.random.uniform(-0.01, 0.015, 1)
+                action[0] += height * np.random.uniform(-0.01, 0.01, 1)
+                action[1] += height * np.random.uniform(-0.01, 0.01, 1)
+                action[2] += np.random.uniform(-0.01, 0.02, 1)
                 action[3] += np.random.uniform(-0.5, 0.5, 1)
 
-                action[0] = np.clip(action[0], -2.00, 2.00)
-                action[1] = np.clip(action[1], -2.00, 2.00)
-                action[2] = np.clip(action[2], -0.000, 2.00)
-                action[3] = np.clip(action[3], -1, 1)
+                height += action[2]/3.
+
+                action[0] = np.clip(action[0], -0.9, 0.9)
+                action[1] = np.clip(action[1], -0.9, 0.9)
+
+                # Height
+                if height < -0.:
+                    action[2] = np.clip(action[2], 0.00, 2.00)
+                else:
+                    action[2] = np.clip(action[2], -0.20, 0.200)
+
+                # Rotation
+                if position[3] < -3.:
+                    action[3] = np.clip(action[3], 0, 2)
+                elif position[3] > 3.:
+                    action[3] = np.clip(action[3], -2, 0)
+                else:
+                    action[3] = np.clip(action[3], -2, 2)
                 # print(action)
 
                 observation, depth, state, reward, done = env.step(torch.from_numpy(action))
                 # print(state.observation["position"])
-                env.render()
+                #env.render()
 
                 images.append(observation.permute(2, 0, 1)[
                     np.newaxis, :, :, :])
@@ -75,7 +94,12 @@ def main():
 
                 actions.append(action[np.newaxis, :])
 
-                position = state.observation["position"][:4]
+                if not_first_flag:
+                    first_pose = state.observation["position"][:4]
+                    not_first_flag = False
+
+                position = state.observation["position"][:4] - first_pose
+                # print(position)
 
                 positions.append(position[np.newaxis, :])
 

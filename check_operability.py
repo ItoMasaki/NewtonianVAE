@@ -93,16 +93,16 @@ def main():
             # action[0, 0] = 0.0
             # action[0, 1] = 0.0
             action[0, 2] = 0.0
-            # action[0, 3] = 0.0
+            action[0, 3] = 0.0
 
-            action[0, 0] = action[0, 0] * 0.01
-            action[0, 1] = action[0, 1] * 0.01
+            action[0, 0] = action[0, 0] * 0.1
+            action[0, 1] = action[0, 1] * 0.1
             action[0, 2] = action[0, 2] * 0.01
-            action[0, 3] = action[0, 3] * 0.01
+            action[0, 3] = action[0, 3] * 0.1
 
-            # action[0, 0] = -action[0, 0]
-            # action[0, 1] = -action[0, 1]
-            # action[0, 2] = -action[0, 2]
+            action[0, 0] = -action[0, 0]
+            action[0, 1] = -action[0, 1]
+            action[0, 2] = -action[0, 2]
             # action[0, 3] = -action[0, 3]
 
 
@@ -110,10 +110,10 @@ def main():
             # print(f"{action.cpu().detach().numpy()}                      ", end="\r")
 
             axis1.set_title("Controlling")
-            art1 = axis1.imshow(env.postprocess_observation(color.detach().numpy(), 8))
+            art1 = axis1.imshow(np.clip(env.postprocess_observation(color.detach().numpy(), 8), 0, 255))
 
             axis2.set_title("Reconstructed")
-            art2 = axis2.imshow(env.postprocess_observation(reconstructed_image[0].permute(1, 2, 0).cpu().detach().numpy(), 8))
+            art2 = axis2.imshow(np.clip(env.postprocess_observation(reconstructed_image[0].permute(1, 2, 0).cpu().detach().numpy(), 8), 0, 255))
 
             axis3.set_title("Action")
             axis3.set_ylim(-0.5, 0.5)
@@ -125,6 +125,7 @@ def main():
             bar5, bar6, bar7, bar8 = axis4.bar(["X", "Y", "Z", "R"], error_from_origin, color=["black", "black", "black", "black"])
 
             frames.append([art1, art2, bar1, bar2, bar3, bar4, bar5, bar6, bar7, bar8])
+            # plt.pause(0.01)
 
         ani = animation.ArtistAnimation(fig, frames, interval=10)
         ani.save(f"{save_root_path}/output.{episode}.mp4", writer="ffmpeg")

@@ -26,7 +26,7 @@ def data_loop(epoch, loader, model, device, train_mode=False):
     for batch_idx, (I, D, u, p, label) in enumerate(tqdm(loader)):
         B, T, C = label.size()
         y = torch.ones(B, T, 1).to(device, non_blocking=True)
-        R = p[:, :, 3].reshape(B, T, 1)
+        R = p[:, :, :].reshape(B, T, 4)
         batch_size = I.size()[0]
 
         if train_mode:
@@ -43,16 +43,22 @@ def data_loop(epoch, loader, model, device, train_mode=False):
                 "R": R.to(device, non_blocking=True).permute(1, 0, 2)})
 
         mean_loss += loss * batch_size
+
         supervised_pos.append(p[:, :-1].detach().cpu().numpy())
         infered_pos.append(pos.permute(1, 0, 2).detach().cpu().numpy())
+        
 
         mean_correlation_x += np.corrcoef(
-                np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 0],
-                np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 0])[0, 1]
-        mean_correlation_y += np.corrcoef(
-                np.concatenate(supervised_pos, axis=0).reshape(-1, 3)[:, 1],
-                np.concatenate(infered_pos, axis=0).reshape(-1, 3)[:, 1])[0, 1]
+                np.concatenate(supervised_pos, axis=0).reshape(-1, 4)[:, 0],
+                np.concatenate(infered_pos, axis=0).reshape(-1, 4)[:, 0])
 
+        
+        mean_correlation_y += np.corrcoef(
+                np.concatenate(supervised_pos, axis=0).reshape(-1, 4)[:, 1],
+                np.concatenate(infered_pos, axis=0).reshape(-1, 4)[:, 1])
+
+    mean_correlation_x = mean_correlation_x[0, 1]
+    mean_correlation_y = mean_correlation_y[0, 1]
     mean_loss /= len(loader.dataset)
     mean_correlation_x /= len(loader.dataset)
     mean_correlation_y /= len(loader.dataset)

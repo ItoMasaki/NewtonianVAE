@@ -9,7 +9,7 @@
 
   <default>
     <!--joint type="hinge" axis="0 0 1" limited="true" range="-.29 .29" damping="1"/-->
-    <joint type="hinge" axis="1 1 1" limited="false" damping="1"/>
+    <!--joint type="hinge" axis="1 1 1" limited="false" damping="1."/-->
     <motor gear=".1" ctrlrange="-1 1" ctrllimited="true"/>
   </default>
 
@@ -24,11 +24,11 @@
     <body name="camera" pos="0 0 0">
       <light name="light" pos="0 0 0"/>
       <camera name="cam0" pos="0 0 0" quat="1 0 0 0"/>
-      <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0"/>
-      <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0"/>
-      <joint name="root_z" type="slide"  pos="0 0 0" axis="0 0 1"/>
+      <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0" damping="1."/>
+      <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0" damping="1."/>
+      <joint name="root_z" type="slide"  pos="0 0 0" axis="0 0 1" damping="1."/>
+      <joint name="shoulder" type="hinge" pos="0.0 0.0 0.0" axis="0 0 1" limited="true" range="-3.14 3.14" damping="1."/>
       <!--joint name="shoulder" limited="false"/-->
-      <joint axis="0 0 1" name="shoulder" pos="0.0 0.0 0.0" limited="false" type="hinge"/>
       <geom name="cam" pos="0 0 1.75" material="target" type="sphere" size=".015"/>
     </body>
 

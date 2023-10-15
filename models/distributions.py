@@ -117,7 +117,19 @@ class RotDecoder(dist.Normal):
     def __init__(self, input_dim: int, label_dim: int, output_dim: int):
         super().__init__(var=["R_t"], cond_var=["x_t"])
 
-        self.loc = nn.Sequential(
+        self.loc_x = nn.Sequential(
+            nn.Linear(1, 1),
+        )
+
+        self.loc_y = nn.Sequential(
+            nn.Linear(1, 1),
+        )
+
+        self.loc_z = nn.Sequential(
+            nn.Linear(1, 1),
+        )
+
+        self.loc_theta = nn.Sequential(
             nn.Linear(1, 1),
         )
 
@@ -125,7 +137,12 @@ class RotDecoder(dist.Normal):
 
         x, y, z, theta = torch.split(x_t, 1, dim=1)
 
-        loc = self.loc(theta)
+        loc_x = self.loc_x(x)
+        loc_y = self.loc_y(y)
+        loc_z = self.loc_z(z)
+        loc_theta = self.loc_theta(theta)
+
+        loc = torch.cat((loc_x, loc_y, loc_z, loc_theta), dim=1)
 
         return {"loc": loc, "scale": 1.}
 
