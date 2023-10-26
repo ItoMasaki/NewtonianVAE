@@ -32,12 +32,14 @@ def data_loop(epoch, loader, model, device, train_mode=False):
         if train_mode:
             loss, pos = model.train({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                "D": D.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
                 "y": y.to(device, non_blocking=True).permute(1, 0, 2),
                 "R": R.to(device, non_blocking=True).permute(1, 0, 2)})
         else:
             loss, pos = model.test({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                "D": D.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
                 "y": y.to(device, non_blocking=True).permute(1, 0, 2),
                 "R": R.to(device, non_blocking=True).permute(1, 0, 2)})

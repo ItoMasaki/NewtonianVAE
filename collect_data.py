@@ -63,6 +63,11 @@ def main():
                 action[2] += np.random.uniform(-0.01, 0.02, 1)
                 action[3] += np.random.uniform(-0.5, 0.5, 1)
 
+                # action[0] = 0
+                # action[1] = 0
+                # action[2] = 0
+                # action[3] = 0
+
                 height += action[2]/3.
 
                 action[0] = np.clip(action[0], -0.9, 0.9)
@@ -85,7 +90,7 @@ def main():
 
                 observation, depth, state, reward, done = env.step(torch.from_numpy(action))
                 # print(state.observation["position"])
-                #env.render()
+                env.render()
 
                 images.append(observation.permute(2, 0, 1)[
                     np.newaxis, :, :, :])

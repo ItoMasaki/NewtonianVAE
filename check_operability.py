@@ -66,7 +66,6 @@ def main():
             # Get current image #
             #===================#
             color, depth, state, reward, done = _env.step(action.cpu())
-            # _env.render()
 
             error_from_origin = state.observation["position"][:4]
             print(f"{error_from_origin}                      ", end="\r")
@@ -75,6 +74,7 @@ def main():
 
             x_q_t = model.color_encoder.sample_mean({
                 "I_t": color.permute(2, 0, 1)[np.newaxis, :, :, :].to(cfg["device"]),
+                "D_t": depth[np.newaxis, :, :].to(cfg["device"]),
                 "y_t": label})
             reconstructed_image = model.color_decoder.sample_mean({"x_t": x_q_t, "y_t": label})
 
@@ -85,24 +85,24 @@ def main():
 
             _action = x_q_t.detach()
 
-            action[0, 0] = _action[0, 0]
-            action[0, 1] = _action[0, 1]
-            action[0, 2] = _action[0, 2]
+            action[0, 0] = _action[0, 1]
+            action[0, 1] = _action[0, 2]
+            action[0, 2] = _action[0, 0]
             action[0, 3] = _action[0, 3]
 
             # action[0, 0] = 0.0
             # action[0, 1] = 0.0
-            action[0, 2] = 0.0
-            action[0, 3] = 0.0
+            # action[0, 2] = 0.0
+            # action[0, 3] = 0.0
 
-            action[0, 0] = action[0, 0] * 0.1
-            action[0, 1] = action[0, 1] * 0.1
-            action[0, 2] = action[0, 2] * 0.01
+            action[0, 0] = action[0, 1] * 0.01
+            action[0, 1] = action[0, 2] * 0.01
+            action[0, 2] = action[0, 0] * 0.1
             action[0, 3] = action[0, 3] * 0.1
 
-            action[0, 0] = -action[0, 0]
-            action[0, 1] = -action[0, 1]
-            action[0, 2] = -action[0, 2]
+            # action[0, 0] = -action[0, 0]
+            # action[0, 1] = -action[0, 1]
+            # action[0, 2] = -action[0, 2]
             # action[0, 3] = -action[0, 3]
 
 
@@ -125,7 +125,8 @@ def main():
             bar5, bar6, bar7, bar8 = axis4.bar(["X", "Y", "Z", "R"], error_from_origin, color=["black", "black", "black", "black"])
 
             frames.append([art1, art2, bar1, bar2, bar3, bar4, bar5, bar6, bar7, bar8])
-            # plt.pause(0.01)
+
+            # _env.render()
 
         ani = animation.ArtistAnimation(fig, frames, interval=10)
         ani.save(f"{save_root_path}/output.{episode}.mp4", writer="ffmpeg")

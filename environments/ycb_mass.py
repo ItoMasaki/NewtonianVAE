@@ -107,16 +107,16 @@ class PointMass(base.Task):
     camera_shoulder = np.random.uniform(-_rot_range, _rot_range)
 
     # data collection
-    # physics.named.data.qpos["root_x"]   = 0.00
-    # physics.named.data.qpos["root_y"]   = 0.05
-    # physics.named.data.qpos["root_z"]   = 0.30
-    # physics.named.data.qpos["shoulder"] = 0.00
+    physics.named.data.qpos["root_x"]   = 0.00
+    physics.named.data.qpos["root_y"]   = 0.05
+    physics.named.data.qpos["root_z"]   = 0.30
+    physics.named.data.qpos["shoulder"] = 0.00
 
     # test
-    physics.named.data.qpos["root_x"] = camera_x
-    physics.named.data.qpos["root_y"] = camera_y+0.05
-    physics.named.data.qpos["root_z"] = 1.6
-    physics.named.data.qpos["shoulder"] = camera_shoulder
+    # physics.named.data.qpos["root_x"] = camera_x
+    # physics.named.data.qpos["root_y"] = camera_y+0.05
+    # physics.named.data.qpos["root_z"] = 1.6
+    # physics.named.data.qpos["shoulder"] = camera_shoulder
 
     physics.named.data.qpos["musterd_bottle_x"] = 0.00
     physics.named.data.qpos["musterd_bottle_y"] = 0.00

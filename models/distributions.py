@@ -17,7 +17,7 @@ class Encoder(dist.Normal):
     """
 
     def __init__(self, color_dim: int, depth_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__(var=["x_t"], cond_var=["I_t", "y_t"], name="q")
+        super().__init__(var=["x_t"], cond_var=["I_t", "D_t", "y_t"], name="q")
 
         activation_func = getattr(nn, activate_func)
 
@@ -32,25 +32,38 @@ class Encoder(dist.Normal):
             activation_func(),
         )
 
+        self.depth_encoder = nn.Sequential(
+            nn.Conv2d(1, 32, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(32, 64, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(64, 128, 4, stride=2),
+            activation_func(),
+            nn.Conv2d(128, 256, 4, stride=2),
+            activation_func(),
+        )
+
         self.loc = nn.Sequential(
-            nn.Linear(1024 + label_dim, 512),
+            nn.Linear(1024*2 + label_dim, 512),
             activation_func(),
             nn.Linear(512, output_dim),
         )
 
         self.scale = nn.Sequential(
-            nn.Linear(1024 + label_dim, 512),
+            nn.Linear(1024*2 + label_dim, 512),
             activation_func(),
             nn.Linear(512, output_dim),
             nn.Softplus()
         )
 
-    def forward(self, I_t: torch.Tensor, y_t: torch.Tensor) -> dict:
+    def forward(self, I_t: torch.Tensor, D_t: torch.Tensor, y_t: torch.Tensor) -> dict:
         h_color = self.color_encoder(I_t)
+        h_depth = self.depth_encoder(D_t)
         B, C, W, H = h_color.shape
         h_color = h_color.reshape((B, C*W*H))
+        h_depth = h_depth.reshape((B, C*W*H))
 
-        h = torch.cat((h_color, y_t), dim=1)
+        h = torch.cat((h_color, h_depth, y_t), dim=1)
 
         loc = self.loc(h)
         scale = self.scale(h)

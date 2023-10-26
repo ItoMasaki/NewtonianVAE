@@ -7,8 +7,8 @@ path: &path datasets/3d_centering_ycb_mass
 
 
 weight:
-  path: results/2023_10_13_21_23_20/weights
-  filename: 190.weight
+  path: results/2023_10_17_15_45_49/weights
+  filename: 180.weight
 
 
 environment:
@@ -30,13 +30,13 @@ model:
     depth_dim: 1
     label_dim: 1
     output_dim: 4
-    activate_func: ReLU
+    activate_func: SiLU
 
   decoder_param:
     input_dim: 4
     label_dim: 1
     output_dim: 3
-    activate_func: LeakyReLU
+    activate_func: SiLU
 
   rot_decoder_param:
     input_dim: 4
