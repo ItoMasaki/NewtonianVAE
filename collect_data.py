@@ -47,20 +47,48 @@ def main():
             images = []
             actions = []
             positions = []
-            action = 0.
+            action = np.zeros(3)
+
+            first_rot = 0.
+            not_first_flag = True
+            position = np.zeros(3)
+
+            transition_limit = 0.25
+            rotation_limit = 1.
 
             for _ in range(sequence_size):
-                action += np.random.uniform(-0.01, 0.01, 2)
-                action = np.clip(action, -1, 1)
+                action[0] += np.random.uniform(-0.005, 0.005, 1)
+                action[1] += np.random.uniform(-0.005, 0.005, 1)
+                action[2] += np.random.uniform(-0.5, 0.5, 1)
+                action[:1] = np.clip(action[:1], -transition_limit, transition_limit)
+
+                # Rotation
+                if position[2] < -3.1:
+                    action[2] = np.clip(action[2], 0, rotation_limit)
+                elif position[2] > 3.1:
+                    action[2] = np.clip(action[2], -rotation_limit, 0)
+                else:
+                    action[2] = np.clip(action[2], -rotation_limit, rotation_limit)
+
 
                 observation, state, reward, done = env.step(torch.from_numpy(action))
-                # env.render()
+                # Render
+                env.render()
 
                 images.append(observation.permute(2, 0, 1)[
                     np.newaxis, :, :, :])
                 actions.append(action[np.newaxis, :])
 
-                positions.append(state.observation["position"][np.newaxis, :])
+                if not_first_flag:
+                    first_rot = state.observation["position"][2]
+                    not_first_flag = False
+
+                position = state.observation["position"][:3]
+                position[2] -= first_rot
+
+                print(f"position : {position} action : {action}", end="\r")
+
+                positions.append(position[np.newaxis, :])
 
             save_memory.append(np.concatenate(images),
                                np.concatenate(actions), np.concatenate(positions), labels, episode)

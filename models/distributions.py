@@ -20,18 +20,19 @@ class Encoder(dist.Normal):
         activation_func = getattr(nn, activate_func)
 
         self.encoder = nn.Sequential(
-            nn.Conv2d(3, 32, 4, stride=2),
+            nn.Conv2d(3, 32, 5, stride=2),
             activation_func(),
-            nn.Conv2d(32, 64, 4, stride=2),
+            nn.Conv2d(32, 64, 5, stride=2),
             activation_func(),
-            nn.Conv2d(64, 128, 4, stride=2),
+            nn.Conv2d(64, 128, 3, stride=2),
             activation_func(),
-            nn.Conv2d(128, 256, 4, stride=2),
+            nn.Conv2d(128, 256, 3, stride=2),
             activation_func(),
         )
 
         self.loc = nn.Sequential(
-            nn.Linear(1024 + label_dim, output_dim),
+            nn.Linear(1024 + label_dim, 512),
+            nn.Linear(512, output_dim),
         )
 
         self.scale = nn.Sequential(
@@ -115,30 +116,14 @@ class Transition(dist.Normal):
 
         self.delta_time = delta_time
 
-        self.sigma = nn.Parameter(torch.ones(2, requires_grad=True))
+        self.sigma = nn.Parameter(torch.ones(3, requires_grad=True))
         self.acivation_func = nn.Softplus()
 
     def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor) -> dict:
 
         x_t = x_tn1 + self.delta_time * v_t
 
-        return {"loc": x_t, "scale": self.acivation_func(self.sigma) + 0.00000000000001}
-
-# class Transition(dist.Normal):
-#     """
-#       p(x_t | x_{t-1}, u_{t-1}; v_t) = N(x_t | x_{t-1} + ∆t·v_t, σ^2)
-#     """
-# 
-#     def __init__(self, delta_time: float):
-#         super().__init__(var=["x_t"], cond_var=["x_tn1", "v_t"])
-# 
-#         self.delta_time = delta_time
-# 
-#     def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor) -> dict:
-# 
-#         x_t = x_tn1 + self.delta_time * v_t
-# 
-#         return {"loc": x_t, "scale": 0.001}
+        return {"loc": x_t, "scale": self.acivation_func(self.sigma) + epsilon()}
 
 
 class Velocity(dist.Deterministic):
@@ -169,9 +154,9 @@ class Velocity(dist.Deterministic):
             )
 
         else:
-            self.A = torch.zeros((1, 2, 2)).to(self.device)
-            self.B = torch.zeros((1, 2, 2)).to(self.device)
-            self.C = torch.diag_embed(torch.ones(1, 2)).to(self.device)
+            self.A = torch.zeros((1, 3, 3)).to(self.device)
+            self.B = torch.zeros((1, 3, 3)).to(self.device)
+            self.C = torch.diag_embed(torch.ones(1, 3)).to(self.device)
 
     def forward(self, x_tn1: torch.Tensor, v_tn1: torch.Tensor, u_tn1: torch.Tensor) -> dict:
 
@@ -194,31 +179,28 @@ class Velocity(dist.Deterministic):
 
         return {"v_t": v_t}
 
+class RotDecoder(dist.Normal):
+    """
+        p(R_t | x_t, y_t) = Normal(I_t | x_t, y_t)
+    """
 
-# class LabelEncoder(dist.Categorical):
-#     def __init__(self, label_dim: int, activation_func_name: str):
-#         super().__init__(var=["y_t"], cond_var=["I_t"])
-# 
-#         activation_func = getattr(nn, activation_func_name)
-# 
-#         self.encoder = nn.Sequential(
-#             nn.Conv2d(3, 32, 4, stride=2),
-#             activation_func(),
-#             nn.Conv2d(32, 64, 4, stride=2),
-#             activation_func(),
-#             nn.Conv2d(64, 128, 4, stride=2),
-#             activation_func(),
-#             nn.Conv2d(128, 256, 4, stride=2),
-#             activation_func(),
-#         )
-# 
-#         self.output_probs = nn.Sequential(
-#             nn.Linear(1024, label_dim),
-#             nn.Sigmoid()
-#         )
-# 
-#     def forward(self, I_t: torch.Tensor) -> dict:
-#         h = self.encoder(I_t)
-#         h = h.reshape((h.shape[0], 1024))
-#         probs = self.output_probs(h)
-#         return {"probs": probs}
+    def __init__(self, input_dim: int, label_dim: int, output_dim: int):
+        super().__init__(var=["R_t"], cond_var=["x_t"])
+
+        self.loc = nn.Sequential(
+            nn.Linear(1, 1),
+        )
+
+        self.scale = nn.Sequential(
+            nn.Linear(1, 1),
+            nn.Softplus(),
+        )
+
+    def forward(self, x_t: torch.Tensor) -> dict:
+
+        x, y, theta = torch.split(x_t, 1, dim=1)
+
+        loc = self.loc(theta)
+        scale = self.scale(theta)
+
+        return {"loc": loc, "scale": 1.}

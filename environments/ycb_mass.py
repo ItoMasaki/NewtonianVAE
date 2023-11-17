@@ -64,8 +64,8 @@ class Physics(mujoco.Physics):
 
   def mass_to_target(self):
     """Returns the vector from mass to target in global coordinate."""
-    return (self.named.data.geom_xpos['target'] -
-            self.named.data.geom_xpos[6])
+    return (self.named.data.geom_xpos[1] -
+            self.named.data.geom_xpos[2])
 
   def mass_to_target_dist(self):
     """Returns the distance from mass to the target."""
@@ -97,11 +97,24 @@ class PointMass(base.Task):
     Args:
       physics: An instance of `mujoco.Physics`.
     """
-    physics.named.data.qpos["root_x"] = np.random.uniform(-.2, .2)
-    physics.named.data.qpos["root_y"] = np.random.uniform(-.2, .2)
-    # physics.named.data.qpos["shoulder"] = np.random.uniform(-3., 3.)
-    # physics.named.data.qpos["root_x"] = 0.
-    # physics.named.data.qpos["root_y"] = 0.
+    _range = 0.2
+    _rot_range = 1.57
+
+    camera_x = np.random.uniform(-_range, _range)
+    camera_y = np.random.uniform(-_range, _range)
+    camera_shoulder = np.random.uniform(-_rot_range, _rot_range)
+
+    physics.named.data.qpos["root_x"] = 0.00
+    physics.named.data.qpos["root_y"] = 0.00
+    physics.named.data.qpos["shoulder"] = 0.00
+
+    # physics.named.data.qpos["object_x"] = 0.00
+    # physics.named.data.qpos["object_y"] = 0.00
+    # physics.named.data.qpos["object_shoulder"] = 0.00
+    physics.named.data.qpos["object_x"] = camera_x
+    physics.named.data.qpos["object_y"] = camera_y
+    physics.named.data.qpos["object_shoulder"] = camera_shoulder
+
     super().initialize_episode(physics)
 
   def get_observation(self, physics):
@@ -113,7 +126,7 @@ class PointMass(base.Task):
 
   def get_reward(self, physics):
     """Returns a reward to the agent."""
-    target_size = physics.named.model.geom_size['target', 0]
+    target_size = 0.25 # physics.named.model.geom_size['target', 0]
     near_target = rewards.tolerance(physics.mass_to_target_dist(),
                                     bounds=(0, target_size), margin=target_size)
     control_reward = rewards.tolerance(physics.control(), margin=1,

@@ -3,7 +3,7 @@ epoch_size: 300
 check_epoch: 1
 bit_depth: &bit_depth 8
 device: &device cuda:0
-path: &path datasets/2_ycb_mass_with_label
+path: &path datasets/real_world_2_ycb
 
 
 weight:
@@ -54,8 +54,8 @@ model:
 
 dataset:
   train:
-    episode_size: &train_episode_size 1000
-    sequence_size: &trin_sequence_size 100
+    episode_size: &train_episode_size 150
+    sequence_size: &trin_sequence_size 10
 
     data:
       path: *path
@@ -76,8 +76,8 @@ dataset:
       pin_memory: True
 
   validation:
-    episode_size: &validation_episode_size 100
-    sequence_size: &validation_sequence_size 100
+    episode_size: &validation_episode_size 50
+    sequence_size: &validation_sequence_size 10
 
     data:
       path: *path

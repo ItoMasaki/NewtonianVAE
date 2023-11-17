@@ -7,6 +7,7 @@ import numpy as np
 from tensorboardX import SummaryWriter
 import torch
 from torch.utils.data import DataLoader
+import torchvision.transforms.functional as F
 from tqdm import tqdm
 import shutil
 import yaml
@@ -20,6 +21,7 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
 
     for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
         label = torch.eye(2)[label.int()].to(device, non_blocking=True).squeeze(2)
+        R = p[:, :, 2].unsqueeze(2)
         batch_size = I.size()[0]
 
         if train_mode:
@@ -27,12 +29,14 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
                 "y": label.to(device, non_blocking=True).permute(1, 0, 2),
+                "R": R.to(device, non_blocking=True).permute(1, 0, 2),
                 "beta": beta}) * batch_size
         else:
             mean_loss += model.test({
                 "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2),
                 "y": label.to(device, non_blocking=True).permute(1, 0, 2),
+                "R": R.to(device, non_blocking=True).permute(1, 0, 2),
                 "beta": beta}) * batch_size
 
     mean_loss /= len(loader.dataset)
@@ -147,7 +151,7 @@ def main():
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
-                            label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
+                            label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0])
                         # I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
                         #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                         #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
@@ -157,7 +161,7 @@ def main():
 
                         latent_position = model.encoder.sample_mean({
                             "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                            "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1]})
+                            "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0]})
                         # latent_position = model.encoder.sample_mean({
                         #     "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                         #     "y_t": y})
@@ -187,10 +191,13 @@ def main():
                     np.array(all_observation_position)[:, 0], np.array(all_latent_position)[:, 0])
                 correlation_Y = np.corrcoef(
                     np.array(all_observation_position)[:, 1], np.array(all_latent_position)[:, 1])
-                print(correlation_X[0, 1], correlation_Y[0, 1])
+                correlation_R = np.corrcoef(
+                    np.array(all_observation_position)[:, 2], np.array(all_latent_position)[:, 2])
+                print("X", correlation_X[0, 1], "Y", correlation_Y[0, 1], "R", correlation_R[0, 1])
 
                 writer.add_scalar('correlation/X', correlation_X[0, 1], epoch - 1)
                 writer.add_scalar('correlation/Y', correlation_Y[0, 1], epoch - 1)
+                writer.add_scalar('correlation/R', correlation_R[0, 1], epoch - 1)
 
 
 if __name__ == "__main__":
