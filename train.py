@@ -15,31 +15,65 @@ import yaml
 from models import ConditionalNewtonianVAE
 from utils import visualize, memory, env
 
+# Correlation
+from scipy.spatial.distance import correlation
+
 
 def data_loop(epoch, loader, model, device, beta, train_mode=False):
     mean_loss = 0
+    kl_loss = 0
+    decoder_loss = 0
+    total_corr = 0.
 
     for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
         label = torch.eye(2)[label.int()].to(device, non_blocking=True).squeeze(2)
         R = p[:, :, 2].unsqueeze(2)
         batch_size = I.size()[0]
 
+        E, T, C, H, W = I.size() # 1, 10, 3, 64, 64
+        # 1, 1, 2 -> 1, 10, 2
+        label = label.repeat(1, T, 1)
+
         if train_mode:
-            mean_loss += model.train({
-                "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
-                "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
-                "y": label.to(device, non_blocking=True).permute(1, 0, 2),
-                "R": R.to(device, non_blocking=True).permute(1, 0, 2),
-                "beta": beta}) * batch_size
+            kl_loss, decoder_loss, output = model(
+                I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                u.to(device, non_blocking=True).permute(1, 0, 2), 
+                label.to(device, non_blocking=True).permute(1, 0, 2),
+                R.to(device, non_blocking=True).permute(1, 0, 2)
+                ) * batch_size
+
+
+            kl_loss += kl_loss
+            decoder_loss += decoder_loss
+            mean_loss += kl_loss + decoder_loss
+
+            corr = 1 - correlation(
+                    output[0].detach().cpu().numpy().flatten(),
+                    p[0].detach().cpu().numpy().flatten()
+                    )
+            total_corr += corr
         else:
-            mean_loss += model.test({
-                "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
-                "u": u.to(device, non_blocking=True).permute(1, 0, 2),
-                "y": label.to(device, non_blocking=True).permute(1, 0, 2),
-                "R": R.to(device, non_blocking=True).permute(1, 0, 2),
-                "beta": beta}) * batch_size
+            kl_loss, decoder_loss, output = model(
+                I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                u.to(device, non_blocking=True).permute(1, 0, 2), 
+                label.to(device, non_blocking=True).permute(1, 0, 2),
+                R.to(device, non_blocking=True).permute(1, 0, 2)
+                ) * batch_size
+
+            kl_loss += kl_loss
+            decoder_loss += decoder_loss
+            mean_loss += kl_loss + decoder_loss
+
+            corr = 1 - correlation(
+                    output[0].detach().cpu().numpy().flatten(),
+                    p[0].detach().cpu().numpy().flatten()
+                    )
+            total_corr += corr
 
     mean_loss /= len(loader.dataset)
+    total_corr /= len(loader.dataset)
+
+    print("kl_loss: ", kl_loss, "decoder_loss: ", decoder_loss, "total_corr: ", total_corr)
 
     if train_mode:
         print('Epoch: {} Train loss: {:.4f}'.format(epoch, mean_loss))
@@ -58,7 +92,8 @@ def main():
         cfg = yaml.safe_load(file)
         pprint.pprint(cfg)
 
-    timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    # timestamp = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    timestamp = "test"
     save_root_path = f"results/{timestamp}"
     save_weight_path = f"{save_root_path}/weights"
     save_video_path = f"{save_root_path}/videos"
@@ -66,6 +101,7 @@ def main():
 
     os.makedirs(save_root_path, exist_ok=True)
     os.makedirs(save_correlation_path, exist_ok=True)
+    os.makedirs(save_weight_path, exist_ok=True)
     shutil.copy2(args.config, save_root_path+"/")
 
     #====================#
@@ -118,13 +154,13 @@ def main():
             #============#
             # Save model #
             #============#
-            model.save(f"{save_weight_path}", f"{epoch}.weight")
+            torch.save(model.state_dict(), f"{save_weight_path}/{epoch}.weight")
 
             #=================#
             # Save best model #
             #=================#
             if validation_loss < best_loss:
-                model.save(f"{save_weight_path}", f"best.weight")
+                torch.save(model.state_dict(), f"{save_weight_path}/best.weight")
                 best_loss = validation_loss
 
             if 30 <= epoch and epoch < 60:
@@ -146,12 +182,13 @@ def main():
                     label = torch.eye(2)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
+                        pass
 
-                        I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
-                            I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                            I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
-                            u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
-                            label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0])
+                        # I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
+                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
+                        #     u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
+                        #     label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0])
                         # I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
                         #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                         #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
@@ -159,45 +196,45 @@ def main():
                         #     y)
 
 
-                        latent_position = model.encoder.sample_mean({
-                            "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                            "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0]})
+                        # latent_position = model.encoder.sample_mean({
+                        #     "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                        #     "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0]})
                         # latent_position = model.encoder.sample_mean({
                         #     "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                         #     "y_t": y})
 
-                        all_latent_position.append(
-                            latent_position.to("cpu").detach().numpy()[0].tolist())
+                        # all_latent_position.append(
+                        #     latent_position.to("cpu").detach().numpy()[0].tolist())
 
-                        observation_position = p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0]
-                        all_observation_position.append(observation_position.to("cpu").detach().numpy()[0].tolist())
+                        # observation_position = p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0]
+                        # all_observation_position.append(observation_position.to("cpu").detach().numpy()[0].tolist())
 
-                        visualizer.append(
-                            env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
-                                "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
-                            env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
-                                0].transpose(1, 2, 0), cfg["bit_depth"]),
-                            np.array(all_latent_position)
-                        )
+                        # visualizer.append(
+                        #     env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
+                        #         "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        #     env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                        #         0].transpose(1, 2, 0), cfg["bit_depth"]),
+                        #     np.array(all_latent_position)
+                        # )
 
-                    np.savez(f"{save_correlation_path}/{epoch}.{idx}", {'latent': all_latent_position, 'observation': all_observation_position})
+                    # np.savez(f"{save_correlation_path}/{epoch}.{idx}", {'latent': all_latent_position, 'observation': all_observation_position})
 
 
-                visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
-                visualizer.add_images(writer, epoch)
-                print()
+                # visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
+                # visualizer.add_images(writer, epoch)
+                # print()
 
-                correlation_X = np.corrcoef(
-                    np.array(all_observation_position)[:, 0], np.array(all_latent_position)[:, 0])
-                correlation_Y = np.corrcoef(
-                    np.array(all_observation_position)[:, 1], np.array(all_latent_position)[:, 1])
-                correlation_R = np.corrcoef(
-                    np.array(all_observation_position)[:, 2], np.array(all_latent_position)[:, 2])
-                print("X", correlation_X[0, 1], "Y", correlation_Y[0, 1], "R", correlation_R[0, 1])
+                # correlation_X = np.corrcoef(
+                #     np.array(all_observation_position)[:, 0], np.array(all_latent_position)[:, 0])
+                # correlation_Y = np.corrcoef(
+                #     np.array(all_observation_position)[:, 1], np.array(all_latent_position)[:, 1])
+                # correlation_R = np.corrcoef(
+                #     np.array(all_observation_position)[:, 2], np.array(all_latent_position)[:, 2])
+                # print("X", correlation_X[0, 1], "Y", correlation_Y[0, 1], "R", correlation_R[0, 1])
 
-                writer.add_scalar('correlation/X', correlation_X[0, 1], epoch - 1)
-                writer.add_scalar('correlation/Y', correlation_Y[0, 1], epoch - 1)
-                writer.add_scalar('correlation/R', correlation_R[0, 1], epoch - 1)
+                # writer.add_scalar('correlation/X', correlation_X[0, 1], epoch - 1)
+                # writer.add_scalar('correlation/Y', correlation_Y[0, 1], epoch - 1)
+                # writer.add_scalar('correlation/R', correlation_R[0, 1], epoch - 1)
 
 
 if __name__ == "__main__":

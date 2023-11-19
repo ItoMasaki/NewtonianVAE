@@ -3,12 +3,14 @@ import os
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
+from torch.distributions import Normal, kl_divergence
 from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 
-from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E
-from pixyz.models import Model
+torch.set_float32_matmul_precision('high')
 
-from models.distributions import Encoder, Decoder, Transition, Velocity, RotDecoder
+
+from models.distributions import Encoder, Decoder, Transition
+# , Decoder, Transition, Velocity, RotDecoder
 
 # from distributions import Encoder, Decoder, Transition, Velocity, LabelEncoder
 # import argparse
@@ -18,7 +20,7 @@ from models.distributions import Encoder, Decoder, Transition, Velocity, RotDeco
 torch.backends.cudnn.benchmark = True
 
 
-class ConditionalNewtonianVAE(Model):
+class ConditionalNewtonianVAE(nn.Module):
     def __init__(self,
                  encoder_param: dict = {},
                  decoder_param: dict = {},
@@ -32,14 +34,15 @@ class ConditionalNewtonianVAE(Model):
                  device: str = "cuda",
                  use_amp: bool = False):
 
+        super().__init__()
+
         #-------------------------#
         # Define models           #
         #-------------------------#
         self.encoder = torch.compile(Encoder(**encoder_param)).to(device)
         self.decoder = torch.compile(Decoder(**decoder_param)).to(device)
-        self.rot_decoder = RotDecoder(input_dim=1, label_dim=1, output_dim=1).to(device)
+        # self.rot_decoder = RotDecoder(input_dim=1, label_dim=1, output_dim=1).to(device)
         self.transition = Transition(**transition_param).to(device)
-        self.velocity = Velocity(**velocity_param).to(device)
 
         #-------------------------#
         # Define hyperparams      #
@@ -48,16 +51,12 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define loss functions   #
         #-------------------------#
-        image_recon_loss = E(self.transition, LogProb(self.decoder))
-        rotation_recon_loss = E(self.transition, LogProb(self.rot_decoder))
-        self.recon_loss = (image_recon_loss + rotation_recon_loss).mean()
+        self.distance = nn.MSELoss()
 
-        self.kl_loss = KL(self.encoder, self.transition).mean()
-
-        self.loss_cls = - self.recon_loss + self.kl_loss
-
+        # self.distributions = nn.ModuleList(
+        #     [self.encoder, self.decoder, self.transition, self.velocity, self.rot_decoder])
         self.distributions = nn.ModuleList(
-            [self.encoder, self.decoder, self.transition, self.velocity, self.rot_decoder])
+            [self.encoder, self.decoder, self.transition])
 
         # -------------------------#
         # Set params and optim     #
@@ -69,84 +68,62 @@ class ConditionalNewtonianVAE(Model):
         # Set for AMP                                      #
         # Whather to use Automatic Mixture Precision [AMP] #
         # -------------------------------------------------#
-        self.use_amp = use_amp
-        self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+        # self.use_amp = use_amp
+        # self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
 
-        self.clip_norm = clip_grad_norm
-        self.clip_value = clip_grad_value
-        self.delta_time = delta_time
-        self.device = device
+        # self.clip_norm = clip_grad_norm
+        # self.clip_value = clip_grad_value
+        # self.delta_time = delta_time
+        # self.device = device
 
-    def calculate_loss(self, input_var_dict: dict = {}):
+    def forward(self, color, action, label, rotation):
 
-        I = input_var_dict["I"]
-        u = input_var_dict["u"]
-        y = input_var_dict["y"]
-        R = input_var_dict["R"]
+        # Initialize
+        initial_pos = torch.zeros_like(action[1])
+        next_pos_locs, next_pos_scales = [], []
 
-        total_loss = 0.
+        T, E, C, H, W = color.shape
+        color = color.view(T*E, C, H, W)
 
-        T, B, C = u.shape
+        T, E, C = label.shape
+        label = label.view(T*E, C)
 
-        # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-        # x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y[0]}, reparam=True)["x_t"]
-        x_q_tn1 = torch.zeros(B, C).to(self.device)
+        # Encode
+        encoder_locs, encoder_scales = self.encoder(color, label)
 
-        for step in range(1, T-1):
+        next_pos_loc = initial_pos
+        next_pos_locs.append(next_pos_loc)
+        next_pos_scales.append(torch.ones_like(next_pos_loc)[0])
+        # Transition
+        for t in range(1, T):
 
-            # x^q_{t} ~ p(x^q_{t} | I_{t})
-            x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y[0]}, reparam=True)["x_t"]
+            next_pos_loc, next_pos_scale = self.transition(next_pos_loc, action[t-1])
 
-            # v_t = (x^q_{t} - x^q_{t-1})/dt
-            v_t = (x_q_t - x_q_tn1)/self.delta_time
+            next_pos_locs.append(next_pos_loc)
+            next_pos_scales.append(next_pos_scale)
 
-            # v_{t+1} = v_{t} + dt (A*x_{t} + B*v_{t} + C*u_{t})
-            v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
+        next_pos_locs = torch.stack(next_pos_locs, dim=0)
+        next_pos_scales = torch.stack(next_pos_scales, dim=0)
 
-            # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-            step_loss, variables = self.loss_cls(
-                    {'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[0], "R_t": R[step+1]})
+        # Decode
+        decoder_locs, decoder_scales = self.decoder(next_pos_locs.squeeze(), label)
+        
+        # Calculate LogProb
+        decoder_loss = Normal(decoder_locs, decoder_scales).log_prob(color).mean()
 
-            total_loss += step_loss
+        # Calculate KL Loss
+        kl_loss = kl_divergence(
+                Normal(encoder_locs, encoder_scales),
+                Normal(next_pos_locs, next_pos_scales)).mean()
 
-            x_q_tn1 = x_q_t
+        loss = kl_loss - decoder_loss
 
-        return total_loss/T
+        self.optimizer.zero_grad()
+        loss.backward(retain_graph=True)
+        self.optimizer.step()
 
-    def train(self, train_x_dict={}):
+        return kl_loss.item(), -decoder_loss.item(), (encoder_locs, decoder_locs)
 
-        self.distributions.train()
-
-        with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
-            loss = self.calculate_loss(train_x_dict)
-
-        self.optimizer.zero_grad(set_to_none=True)
-
-        # backward
-        self.scaler.scale(loss).backward()
-
-        if self.clip_norm:
-            clip_grad_norm_(self.distributions.parameters(), self.clip_norm)
-        if self.clip_value:
-            clip_grad_value_(self.distributions.parameters(), self.clip_value)
-
-        # update params
-        self.scaler.step(self.optimizer)
-
-        # update scaler
-        self.scaler.update()
-
-        return loss.item()
-
-    def test(self, test_x_dict={}):
-
-        self.distributions.eval()
-
-        with torch.no_grad():
-            with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
-                loss = self.calculate_loss(test_x_dict)
-
-        return loss.item()
 
     def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor, y: torch.Tensor):
         self.distributions.eval()
@@ -178,37 +155,108 @@ class ConditionalNewtonianVAE(Model):
 
         return I_t, I_tp1, x_q_t, x_p_tp1
 
-    def save(self, path, filename):
-        os.makedirs(path, exist_ok=True)
+    # def calculate_loss(self, input_var_dict: dict = {}):
 
-        torch.save({
-            'distributions': self.distributions.to("cpu").state_dict(),
-        }, f"{path}/{filename}")
+    #     I = input_var_dict["I"]
+    #     u = input_var_dict["u"]
+    #     y = input_var_dict["y"]
+    #     R = input_var_dict["R"]
 
-        self.distributions.to(self.device)
+    #     total_loss = 0.
 
-    def save_ckpt(self, path, filename, epoch, loss):
-        os.makedirs(path, exist_ok=True)
+    #     T, B, C = u.shape
 
-        torch.save({
-            'epoch': epoch,
-            'model_state_dict': self.distributions.to("cpu").state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'loss': loss,
-        }, f"{path}/{filename}")
+    #     # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
+    #     # x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y[0]}, reparam=True)["x_t"]
+    #     x_q_tn1 = torch.zeros(B, C).to(self.device)
 
-        self.distributions.to(self.device)
+    #     for step in range(1, T-1):
 
-    def load(self, path, filename):
-        self.distributions.load_state_dict(torch.load(
-            f"{path}/{filename}", map_location=torch.device('cpu'))['distributions'])
+    #         # x^q_{t} ~ p(x^q_{t} | I_{t})
+    #         x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y[0]}, reparam=True)["x_t"]
 
-    def load_ckpt(self, path, filename):
-        self.distributions.load_state_dict(torch.load(
-            f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['model_state_dict'])
+    #         # v_t = (x^q_{t} - x^q_{t-1})/dt
+    #         v_t = (x_q_t - x_q_tn1)/self.delta_time
 
-        self.optimizer.load_state_dict(torch.load(
-            f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['optimizer_state_dict'])
+    #         # v_{t+1} = v_{t} + dt (A*x_{t} + B*v_{t} + C*u_{t})
+    #         v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
+
+    #         # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
+    #         step_loss, variables = self.loss_cls(
+    #                 {'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[0], "R_t": R[step+1]})
+
+    #         total_loss += step_loss
+
+    #         x_q_tn1 = x_q_t
+
+    #     return total_loss/T
+
+    # def train(self, train_x_dict={}):
+
+    #     self.distributions.train()
+
+    #     with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
+    #         loss = self.calculate_loss(train_x_dict)
+
+    #     self.optimizer.zero_grad(set_to_none=True)
+
+    #     # backward
+    #     self.scaler.scale(loss).backward()
+
+    #     if self.clip_norm:
+    #         clip_grad_norm_(self.distributions.parameters(), self.clip_norm)
+    #     if self.clip_value:
+    #         clip_grad_value_(self.distributions.parameters(), self.clip_value)
+
+    #     # update params
+    #     self.scaler.step(self.optimizer)
+
+    #     # update scaler
+    #     self.scaler.update()
+
+    #     return loss.item()
+
+    # def test(self, test_x_dict={}):
+
+    #     self.distributions.eval()
+
+    #     with torch.no_grad():
+    #         with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
+    #             loss = self.calculate_loss(test_x_dict)
+
+    #     return loss.item()
+
+    # def save(self, path, filename):
+    #     os.makedirs(path, exist_ok=True)
+
+    #     torch.save({
+    #         'distributions': self.distributions.to("cpu").state_dict(),
+    #     }, f"{path}/{filename}")
+
+    #     self.distributions.to(self.device)
+
+    # def save_ckpt(self, path, filename, epoch, loss):
+    #     os.makedirs(path, exist_ok=True)
+
+    #     torch.save({
+    #         'epoch': epoch,
+    #         'model_state_dict': self.distributions.to("cpu").state_dict(),
+    #         'optimizer_state_dict': self.optimizer.state_dict(),
+    #         'loss': loss,
+    #     }, f"{path}/{filename}")
+
+    #     self.distributions.to(self.device)
+
+    # def load(self, path, filename):
+    #     self.distributions.load_state_dict(torch.load(
+    #         f"{path}/{filename}", map_location=torch.device('cpu'))['distributions'])
+
+    # def load_ckpt(self, path, filename):
+    #     self.distributions.load_state_dict(torch.load(
+    #         f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['model_state_dict'])
+
+    #     self.optimizer.load_state_dict(torch.load(
+    #         f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['optimizer_state_dict'])
 
 def main():
     parser = argparse.ArgumentParser(description='Collection dataset')

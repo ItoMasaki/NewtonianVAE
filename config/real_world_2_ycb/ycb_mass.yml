@@ -91,7 +91,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: 16
+      batch_size: 1
       shuffle: False
       drop_last: False
       num_workers: 8
