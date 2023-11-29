@@ -57,10 +57,11 @@ def main():
             rotation_limit = 1.
 
             for _ in range(sequence_size):
-                action[0] += np.random.uniform(-0.005, 0.005, 1)
-                action[1] += np.random.uniform(-0.005, 0.005, 1)
-                action[2] += np.random.uniform(-0.5, 0.5, 1)
+                action[0] = action[0] + np.random.uniform(-0.005, 0.005, 1)
+                action[1] = action[1] + np.random.uniform(-0.005, 0.005, 1)
+                action[2] = action[2] + np.random.uniform(-0.5, 0.5, 1)
                 action[:1] = np.clip(action[:1], -transition_limit, transition_limit)
+                # print(action)
 
                 # Rotation
                 if position[2] < -3.1:
@@ -77,7 +78,7 @@ def main():
 
                 images.append(observation.permute(2, 0, 1)[
                     np.newaxis, :, :, :])
-                actions.append(action[np.newaxis, :])
+                actions.append(action[np.newaxis, :].copy())
 
                 if not_first_flag:
                     first_rot = state.observation["position"][2]

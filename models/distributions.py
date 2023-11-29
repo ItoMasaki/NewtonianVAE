@@ -2,18 +2,20 @@ import numpy as np
 
 import torch
 from torch import nn
-from torch import distributions as dists
 from torch.nn import functional as F
 
+from pixyz import distributions as dist
+from pixyz.utils import epsilon
 
 
-class Encoder(nn.Module):
+
+class Encoder(dist.Normal):
     """
         q(x_t | I_t, y_t) = Normal(x_t | I_t, y_t)
     """
 
     def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__()
+        super().__init__(var=["x_t_q"], cond_var=["I_t", "y_t"], name="q")
 
         activation_func = getattr(nn, activate_func)
 
@@ -30,7 +32,6 @@ class Encoder(nn.Module):
 
         self.loc = nn.Sequential(
             nn.Linear(1024 + label_dim, 512),
-            activation_func(),
             nn.Linear(512, output_dim),
         )
 
@@ -49,37 +50,16 @@ class Encoder(nn.Module):
         loc = self.loc(h)
         scale = self.scale(h)
 
-        return loc, scale
+        return {"loc": loc, "scale": scale + epsilon()}
 
 
-
-class Transition(nn.Module):
-    """
-      p(x_t | x_{t-1}, u_{t-1}; v_t) = N(x_t | x_{t-1} + ∆t·v_t, σ^2)
-    """
-
-    def __init__(self, delta_time: float):
-        super().__init__()
-
-        self.delta_time = delta_time
-
-        self.sigma = nn.Parameter(torch.ones(3, requires_grad=True))
-        self.acivation_func = nn.Softplus()
-
-    def forward(self, x_tn1: torch.Tensor, v_t: torch.Tensor) -> dict:
-
-        x_t = x_tn1 + self.delta_time * v_t
-
-        return x_t, self.acivation_func(self.sigma)
-
-
-class Decoder(nn.Module):
+class Decoder(dist.Normal):
     """
         p(I_t | x_t, y_t) = Bernoulli(I_t | x_t, y_t)
     """
 
     def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
-        super().__init__()
+        super().__init__(var=["I_t"], cond_var=["x_t_p", "y_t"])
 
         activation_func = getattr(nn, activate_func)
 
@@ -102,10 +82,10 @@ class Decoder(nn.Module):
 
         self.z_dim = input_dim + label_dim
 
-    def forward(self, x_t: torch.Tensor, y_t: torch.Tensor) -> dict:
-        device = x_t.device
+    def forward(self, x_t_p: torch.Tensor, y_t: torch.Tensor) -> dict:
+        device = x_t_p.device
 
-        x_t = torch.cat((x_t, y_t), dim=1)
+        x_t = torch.cat((x_t_p, y_t), dim=1)
 
         # h = self.up_feature(h)
         # h = h.reshape((h.shape[0], 256, 2, 2))
@@ -124,30 +104,54 @@ class Decoder(nn.Module):
 
         loc = self.loc(z_and_xy)/2.
 
-        return loc, 1.
+        return {"loc": loc, "scale": 1.}
 
-# class RotDecoder(dist.Normal):
-#     """
-#         p(R_t | x_t, y_t) = Normal(I_t | x_t, y_t)
-#     """
-# 
-#     def __init__(self, input_dim: int, label_dim: int, output_dim: int):
-#         super().__init__(var=["R_t"], cond_var=["x_t"])
-# 
-#         self.loc = nn.Sequential(
-#             nn.Linear(1, 1),
-#         )
-# 
-#         self.scale = nn.Sequential(
-#             nn.Linear(1, 1),
-#             nn.Softplus(),
-#         )
-# 
-#     def forward(self, x_t: torch.Tensor) -> dict:
-# 
-#         x, y, theta = torch.split(x_t, 1, dim=1)
-# 
-#         loc = self.loc(theta)
-#         scale = self.scale(theta)
-# 
-#         return {"loc": loc, "scale": 1.}
+class Transition(dist.Normal):
+    """
+      p(x_t | x_{t-1}, u_{t-1}; v_t) = N(x_t | x_{t-1} + ∆t·v_t, σ^2)
+    """
+
+    def __init__(self, delta_time: float):
+        super().__init__(var=["x_t_p"], cond_var=["x_tn1_p", "v_t"])
+
+        self.delta_time = delta_time
+
+        self.sigma = nn.Parameter(torch.ones(3, requires_grad=True))
+        self.acivation_func = nn.Softplus()
+
+    def forward(self, x_tn1_p: torch.Tensor, v_t: torch.Tensor) -> dict:
+
+        x_t_p = x_tn1_p + self.delta_time * v_t
+        print(x_t_p)
+        # _v_t = v_t.detach().cpu().numpy()
+        # _x_t_p = x_t_p.detach().cpu().numpy()
+        # _x_tp1 = x_tp1.detach().cpu().numpy()
+        # print(f"{_x_tp1} = {_x_t_p} + {self.delta_time} * {_v_t}")
+        return {"loc": x_t_p, "scale": 0.0001}
+
+
+class RotDecoder(dist.Normal):
+    """
+        p(R_t | x_t, y_t) = Normal(I_t | x_t, y_t)
+    """
+
+    def __init__(self, input_dim: int, label_dim: int, output_dim: int):
+        super().__init__(var=["R_t"], cond_var=["x_t_p"])
+
+        self.loc = nn.Sequential(
+            nn.Linear(1, 1),
+        )
+
+        self.scale = nn.Sequential(
+            nn.Linear(1, 1),
+            nn.Softplus(),
+        )
+
+    def forward(self, x_t_p: torch.Tensor) -> dict:
+
+        x, y, theta = torch.split(x_t_p, 1, dim=1)
+
+        loc = self.loc(theta)
+        scale = self.scale(theta)
+
+        return {"loc": loc, "scale": 1.}

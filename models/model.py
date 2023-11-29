@@ -3,24 +3,23 @@ import os
 import torch
 from torch import nn, optim
 from torch.nn import functional as F
-from torch.distributions import Normal, kl_divergence
 from torch.nn.utils import clip_grad_norm_, clip_grad_value_
 
-torch.set_float32_matmul_precision('high')
+from pixyz.losses import Parameter, LogProb, KullbackLeibler as KL, Expectation as E, IterativeLoss
+from pixyz.models import Model
 
+from models.distributions import Encoder, Decoder, Transition, RotDecoder
 
-from models.distributions import Encoder, Decoder, Transition
-# , Decoder, Transition, Velocity, RotDecoder
-
-# from distributions import Encoder, Decoder, Transition, Velocity, LabelEncoder
+# from distributions import Encoder, Decoder, Transition, RotDecoder
 # import argparse
 # import yaml
 # import pprint
+# from tqdm import tqdm
 
 torch.backends.cudnn.benchmark = True
 
 
-class ConditionalNewtonianVAE(nn.Module):
+class ConditionalNewtonianVAE(Model):
     def __init__(self,
                  encoder_param: dict = {},
                  decoder_param: dict = {},
@@ -34,229 +33,38 @@ class ConditionalNewtonianVAE(nn.Module):
                  device: str = "cuda",
                  use_amp: bool = False):
 
-        super().__init__()
-
         #-------------------------#
         # Define models           #
         #-------------------------#
-        self.encoder = torch.compile(Encoder(**encoder_param)).to(device)
-        self.decoder = torch.compile(Decoder(**decoder_param)).to(device)
-        # self.rot_decoder = RotDecoder(input_dim=1, label_dim=1, output_dim=1).to(device)
+        self.encoder = torch.compile(Encoder(**encoder_param), mode="max-autotune").to(device)
+        self.decoder = torch.compile(Decoder(**decoder_param), mode="max-autotune").to(device)
+        self.rot_decoder = RotDecoder(input_dim=1, label_dim=1, output_dim=1).to(device)
         self.transition = Transition(**transition_param).to(device)
-
-        #-------------------------#
-        # Define hyperparams      #
-        #-------------------------#
 
         #-------------------------#
         # Define loss functions   #
         #-------------------------#
-        self.distance = nn.MSELoss()
+        image_recon_loss = E(self.transition, LogProb(self.decoder))
+        # rotation_recon_loss = E(self.transition, LogProb(self.rot_decoder))
+        # recon_loss = (image_recon_loss + rotation_recon_loss).mean()
+        recon_loss = (image_recon_loss).mean()
 
-        # self.distributions = nn.ModuleList(
-        #     [self.encoder, self.decoder, self.transition, self.velocity, self.rot_decoder])
-        self.distributions = nn.ModuleList(
-            [self.encoder, self.decoder, self.transition])
+        kl_loss = KL(self.encoder, self.transition).mean()
 
-        # -------------------------#
-        # Set params and optim     #
-        # -------------------------#
-        params = self.distributions.parameters()
-        self.optimizer = getattr(optim, optimizer)(params, **optimizer_params)
+        step_loss = - recon_loss + kl_loss
 
-        # -------------------------------------------------#
-        # Set for AMP                                      #
-        # Whather to use Automatic Mixture Precision [AMP] #
-        # -------------------------------------------------#
-        # self.use_amp = use_amp
-        # self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+        loss = IterativeLoss(
+                step_loss,
+                max_iter=100,
+                series_var=["I_t", "y_t", "R_t", "v_t"],
+                update_value={"x_t_p": "x_tn1_p"}
+        )
 
-        # self.clip_norm = clip_grad_norm
-        # self.clip_value = clip_grad_value
-        # self.delta_time = delta_time
-        # self.device = device
+        super().__init__(loss=loss, distributions=[self.encoder, self.decoder, self.transition, self.rot_decoder], clip_grad_norm=clip_grad_norm, clip_grad_value=clip_grad_value)
 
-    def forward(self, color, action, label, rotation):
+        self.delta_time = delta_time
+        self.device = device
 
-        # Initialize
-        initial_pos = torch.zeros_like(action[1])
-        next_pos_locs, next_pos_scales = [], []
-
-        T, E, C, H, W = color.shape
-        color = color.view(T*E, C, H, W)
-
-        T, E, C = label.shape
-        label = label.view(T*E, C)
-
-        # Encode
-        encoder_locs, encoder_scales = self.encoder(color, label)
-
-        next_pos_loc = initial_pos
-        next_pos_locs.append(next_pos_loc)
-        next_pos_scales.append(torch.ones_like(next_pos_loc)[0])
-        # Transition
-        for t in range(1, T):
-
-            next_pos_loc, next_pos_scale = self.transition(next_pos_loc, action[t-1])
-
-            next_pos_locs.append(next_pos_loc)
-            next_pos_scales.append(next_pos_scale)
-
-        next_pos_locs = torch.stack(next_pos_locs, dim=0)
-        next_pos_scales = torch.stack(next_pos_scales, dim=0)
-
-        # Decode
-        decoder_locs, decoder_scales = self.decoder(next_pos_locs.squeeze(), label)
-        
-        # Calculate LogProb
-        decoder_loss = Normal(decoder_locs, decoder_scales).log_prob(color).mean()
-
-        # Calculate KL Loss
-        kl_loss = kl_divergence(
-                Normal(encoder_locs, encoder_scales),
-                Normal(next_pos_locs, next_pos_scales)).mean()
-
-        loss = kl_loss - decoder_loss
-
-        self.optimizer.zero_grad()
-        loss.backward(retain_graph=True)
-        self.optimizer.step()
-
-        return kl_loss.item(), -decoder_loss.item(), (encoder_locs, decoder_locs)
-
-
-    def estimate(self, I_t: torch.Tensor, I_tn1: torch.Tensor, u_t: torch.Tensor, y: torch.Tensor):
-        self.distributions.eval()
-
-        with torch.no_grad():
-            with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
-
-                # x^q_{t-1} ~ p(x^q_{t-1) | I_{t-1))
-                x_q_tn1 = self.encoder.sample_mean({"I_t": I_tn1, "y_t": y})
-
-                # x^q_t ~ p(x^q_t | I_t)
-                x_q_t = self.encoder.sample_mean({"I_t": I_t, "y_t": y})
-
-                # p(I_t | x_t)
-                I_t = self.decoder.sample_mean({"x_t": x_q_t, "y_t": y})
-
-                # v_t = (x^q_t - x^q_{t-1})/dt
-                v_t = (x_q_t - x_q_tn1)/self.delta_time
-
-                # v_{t+1} = v_{t} + dt (A*x_{t} + B*v_{t} + C*u_{t})
-                v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u_t)["v_t"]
-
-                # p(x_p_{t+1} | x_q_{t}, v_{t+1})
-                x_p_tp1 = self.transition.sample_mean(
-                    {"x_tn1": x_q_t, "v_t": v_tp1})
-
-                # p(I_{t+1} | x_{t+1})
-                I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1, "y_t": y})
-
-        return I_t, I_tp1, x_q_t, x_p_tp1
-
-    # def calculate_loss(self, input_var_dict: dict = {}):
-
-    #     I = input_var_dict["I"]
-    #     u = input_var_dict["u"]
-    #     y = input_var_dict["y"]
-    #     R = input_var_dict["R"]
-
-    #     total_loss = 0.
-
-    #     T, B, C = u.shape
-
-    #     # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-    #     # x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y[0]}, reparam=True)["x_t"]
-    #     x_q_tn1 = torch.zeros(B, C).to(self.device)
-
-    #     for step in range(1, T-1):
-
-    #         # x^q_{t} ~ p(x^q_{t} | I_{t})
-    #         x_q_t = self.encoder.sample({"I_t": I[step], "y_t": y[0]}, reparam=True)["x_t"]
-
-    #         # v_t = (x^q_{t} - x^q_{t-1})/dt
-    #         v_t = (x_q_t - x_q_tn1)/self.delta_time
-
-    #         # v_{t+1} = v_{t} + dt (A*x_{t} + B*v_{t} + C*u_{t})
-    #         v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
-
-    #         # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
-    #         step_loss, variables = self.loss_cls(
-    #                 {'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1], 'y_t': y[0], "R_t": R[step+1]})
-
-    #         total_loss += step_loss
-
-    #         x_q_tn1 = x_q_t
-
-    #     return total_loss/T
-
-    # def train(self, train_x_dict={}):
-
-    #     self.distributions.train()
-
-    #     with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
-    #         loss = self.calculate_loss(train_x_dict)
-
-    #     self.optimizer.zero_grad(set_to_none=True)
-
-    #     # backward
-    #     self.scaler.scale(loss).backward()
-
-    #     if self.clip_norm:
-    #         clip_grad_norm_(self.distributions.parameters(), self.clip_norm)
-    #     if self.clip_value:
-    #         clip_grad_value_(self.distributions.parameters(), self.clip_value)
-
-    #     # update params
-    #     self.scaler.step(self.optimizer)
-
-    #     # update scaler
-    #     self.scaler.update()
-
-    #     return loss.item()
-
-    # def test(self, test_x_dict={}):
-
-    #     self.distributions.eval()
-
-    #     with torch.no_grad():
-    #         with torch.cuda.amp.autocast(enabled=self.use_amp):  # AMP
-    #             loss = self.calculate_loss(test_x_dict)
-
-    #     return loss.item()
-
-    # def save(self, path, filename):
-    #     os.makedirs(path, exist_ok=True)
-
-    #     torch.save({
-    #         'distributions': self.distributions.to("cpu").state_dict(),
-    #     }, f"{path}/{filename}")
-
-    #     self.distributions.to(self.device)
-
-    # def save_ckpt(self, path, filename, epoch, loss):
-    #     os.makedirs(path, exist_ok=True)
-
-    #     torch.save({
-    #         'epoch': epoch,
-    #         'model_state_dict': self.distributions.to("cpu").state_dict(),
-    #         'optimizer_state_dict': self.optimizer.state_dict(),
-    #         'loss': loss,
-    #     }, f"{path}/{filename}")
-
-    #     self.distributions.to(self.device)
-
-    # def load(self, path, filename):
-    #     self.distributions.load_state_dict(torch.load(
-    #         f"{path}/{filename}", map_location=torch.device('cpu'))['distributions'])
-
-    # def load_ckpt(self, path, filename):
-    #     self.distributions.load_state_dict(torch.load(
-    #         f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['model_state_dict'])
-
-    #     self.optimizer.load_state_dict(torch.load(
-    #         f"{path}/{filename}", map_location=torch.device('cpu'))['distributions']['optimizer_state_dict'])
 
 def main():
     parser = argparse.ArgumentParser(description='Collection dataset')
@@ -269,15 +77,30 @@ def main():
         pprint.pprint(cfg)
 
     model = ConditionalNewtonianVAE(**cfg['model'])
-    print(model)
 
-    I = torch.randn(300, 1, 3, 64, 64).cuda()
-    u = torch.randn(300, 1, 2).cuda()
-    y = torch.randn(300, 1, 2).cuda()
+    
+    for i in tqdm(range(300)):
+        for i in tqdm(range(1000)):
+            I_t = torch.ones(100, 1, 3, 64, 64) * torch.arange(100).reshape(-1, 1, 1, 1, 1) + (torch.rand(100, 1, 3, 64, 64)-0.5)/500.
+            I_t = I_t.cuda()/100.
 
-    loss = model.train({"I": I, "u": u, "y": y, "beta": 1.})
-    print(loss)
+            u = torch.ones(100, 1, 3) + (torch.rand(100, 1, 3)/10.-0.5)
+            u[0] = torch.zeros(1, 1, 3)
+            u = u.cuda()
+            y = torch.zeros(100, 1, 2).cuda()
+            R = torch.zeros(100, 1, 1).cuda()
 
+            T, B, C = u.shape
+
+            x_p_t = torch.zeros(B, C).to("cuda")
+
+            loss, output_dict = model.train({'v_t': u, 'y_t': y, 'x_tn1_p': x_p_t, 'I_t': I_t, 'R_t': R}, return_dict=True)
+            # print(output_dict["AnalyticalKullbackLeibler"])
+            # loss = model.train({"I": I, "u": u, "y": y, "R": R})
+            # print(loss)
+
+        x = model.encoder.sample_mean({"I_t": I_t[0], "y_t": y[0]})
+        print(x.cpu().detach().numpy().tolist())
 
 if __name__ == "__main__":
     main()

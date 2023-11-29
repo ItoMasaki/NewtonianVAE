@@ -211,10 +211,10 @@ class ControlSuiteEnv():
   def get_model_and_assets(self):
     """Returns a tuple containing the model XML string and a dict of assets."""
     object_files = {
-            0: "mustard_bottle.xml",
-            1: "tomato_soup_can.xml",
-            # 2: "cracker_box.xml",
-            # 3: "master_chef_can.xml",
+            # 0: "mustard_bottle.xml",
+            # 1: "tomato_soup_can.xml",
+            0: "cracker_box.xml",
+            1: "master_chef_can.xml",
             # 4: "gelatin_box.xml",
             # 5: "pudding_box.xml",
             # 6: "sugar_box.xml",

@@ -19,67 +19,66 @@ from utils import visualize, memory, env
 from scipy.spatial.distance import correlation
 
 
+
 def data_loop(epoch, loader, model, device, beta, train_mode=False):
     mean_loss = 0
     kl_loss = 0
     decoder_loss = 0
     total_corr = 0.
 
-    for batch_idx, (I, u, p, label) in enumerate(tqdm(loader)):
-        label = torch.eye(2)[label.int()].to(device, non_blocking=True).squeeze(2)
-        R = p[:, :, 2].unsqueeze(2)
-        batch_size = I.size()[0]
+    with tqdm(loader, desc=f"[Epoch {epoch}]") as pbar:
 
-        E, T, C, H, W = I.size() # 1, 10, 3, 64, 64
-        # 1, 1, 2 -> 1, 10, 2
-        label = label.repeat(1, T, 1)
+        for batch_idx, (I, u, p, label) in enumerate(pbar):
+            batch_size = I.size()[0]
+            episode, time, channel, height, width = I.size() # 1, 10, 3, 64, 64
 
-        if train_mode:
-            kl_loss, decoder_loss, output = model(
-                I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
-                u.to(device, non_blocking=True).permute(1, 0, 2), 
-                label.to(device, non_blocking=True).permute(1, 0, 2),
-                R.to(device, non_blocking=True).permute(1, 0, 2)
-                ) * batch_size
+            # Rotation
+            R = p[:, :, 2].unsqueeze(2)
 
+            # Condition
+            label = torch.eye(2)[label.int()].to(device, non_blocking=True).squeeze(2)
+            # 1, 1, 2 -> 1, 10, 2
+            C = label.repeat(1, time, 1)
 
-            kl_loss += kl_loss
-            decoder_loss += decoder_loss
-            mean_loss += kl_loss + decoder_loss
+            if train_mode:
+                x_p_t = torch.zeros(batch_size, channel).to(device)
+                loss, output_dict = model.train({
+                    'v_t': u.to(device, non_blocking=True).permute(1, 0, 2),
+                    'y_t': C.to(device, non_blocking=True).permute(1, 0, 2),
+                    'x_tn1_p': x_p_t,
+                    'I_t': I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                    'R_t': R.to(device, non_blocking=True).permute(1, 0, 2),
+                }, return_dict=True)
 
-            corr = 1 - correlation(
-                    output[0].detach().cpu().numpy().flatten(),
-                    p[0].detach().cpu().numpy().flatten()
-                    )
-            total_corr += corr
-        else:
-            kl_loss, decoder_loss, output = model(
-                I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
-                u.to(device, non_blocking=True).permute(1, 0, 2), 
-                label.to(device, non_blocking=True).permute(1, 0, 2),
-                R.to(device, non_blocking=True).permute(1, 0, 2)
-                ) * batch_size
+                mean_loss += loss.item()
+                kl_loss += output_dict["AnalyticalKullbackLeibler"].item()
 
-            kl_loss += kl_loss
-            decoder_loss += decoder_loss
-            mean_loss += kl_loss + decoder_loss
+                pbar.set_postfix({
+                    "Loss": f"{ int(mean_loss/(batch_idx+1)) }",
+                    "KL": f"{ kl_loss/(batch_idx+1) }",
+                })
+            else:
+                x_p_t = torch.zeros(batch_size, channel).to(device)
+                loss, output_dict = model.test({
+                    'v_t': u.to(device, non_blocking=True).permute(1, 0, 2),
+                    'y_t': C.to(device, non_blocking=True).permute(1, 0, 2),
+                    'x_tn1_p': x_p_t,
+                    'I_t': I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
+                    'R_t': R.to(device, non_blocking=True).permute(1, 0, 2),
+                }, return_dict=True)
 
-            corr = 1 - correlation(
-                    output[0].detach().cpu().numpy().flatten(),
-                    p[0].detach().cpu().numpy().flatten()
-                    )
-            total_corr += corr
+                mean_loss += loss.item()
+                kl_loss += output_dict["AnalyticalKullbackLeibler"].mean().item()
 
-    mean_loss /= len(loader.dataset)
-    total_corr /= len(loader.dataset)
+                pbar.set_postfix({
+                    "Loss": f"{ int(mean_loss/(batch_idx+1)) }",
+                    "KL": f"{ kl_loss/(batch_idx+1) }",
+                })
 
-    print("kl_loss: ", kl_loss, "decoder_loss: ", decoder_loss, "total_corr: ", total_corr)
+        mean_loss /= len(loader.dataset)
+        total_corr /= len(loader.dataset)
 
-    if train_mode:
-        print('Epoch: {} Train loss: {:.4f}'.format(epoch, mean_loss))
-    else:
-        print('Test loss: {:.4f}'.format(mean_loss))
-    return mean_loss
+        return mean_loss
 
 
 def main():
@@ -122,7 +121,9 @@ def main():
 
     best_loss: float = 1e32
     beta: float = 0.001
-    # beta: float = 1.
+    corr_x: float = 0.
+    corr_y: float = 0.
+    corr_r: float = 0.
 
     with tqdm(range(1, cfg["epoch_size"]+1)) as pbar:
 
@@ -138,103 +139,112 @@ def main():
             #================#
             train_loss = data_loop(epoch, train_loader,
                                    model, cfg["device"], beta, train_mode=True)
-            writer.add_scalar('train_loss', train_loss, epoch - 1)
 
             #==================#
             # Validation phase #
             #==================#
             validation_loss = data_loop(
                 epoch, validation_loader, model, cfg["device"], beta, train_mode=False)
-            writer.add_scalar('validation_loss', validation_loss, epoch - 1)
-
-            pbar.set_postfix({"validation": validation_loss,
-                              "train": train_loss})
-
 
             #============#
             # Save model #
             #============#
-            torch.save(model.state_dict(), f"{save_weight_path}/{epoch}.weight")
+            model.save(f"{save_weight_path}/{epoch}.weight")
 
             #=================#
             # Save best model #
             #=================#
             if validation_loss < best_loss:
-                torch.save(model.state_dict(), f"{save_weight_path}/best.weight")
+                model.save(f"{save_weight_path}/best.weight")
                 best_loss = validation_loss
-
-            if 30 <= epoch and epoch < 60:
-                beta += 0.0333
 
             #==============#
             # Encode video #
             #==============#
             if epoch % cfg["check_epoch"] == 0:
                 visualizer = visualize.Visualization()
+
                 all_latent_position: list = []
-                all_observation_position: list = []
+                all_position: list = []
+                all_raw_images: list = []
+                all_rec_images: list = []
 
                 #============#
                 # Test phase #
                 #============#
                 for idx, (I, u, p, label) in enumerate(test_loader):
 
+                    one_episode_latent_position: list = []
+                    one_episode_position: list = []
+                    one_episode_raw_images: list = []
+                    one_episode_rec_images: list = []
+
                     label = torch.eye(2)[label.int()].to(cfg["device"], non_blocking=True).squeeze(2)
 
+                    p_t = np.zeros_like(p[0, 0, :].cpu().detach().numpy())
+
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
-                        pass
+                        with torch.no_grad():
+                            x_q_t = model.encoder.sample_mean({
+                                "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
+                                "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0],
+                            })
+                            I_t = model.decoder.sample_mean({
+                                "x_t_p": x_q_t,
+                                "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0],
+                            })
 
-                        # I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
-                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
-                        #     u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
-                        #     label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0])
-                        # I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
-                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                        #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
-                        #     u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
-                        #     y)
+                        x_q_t = x_q_t.cpu().detach().numpy().copy()
+                        # p_t = p.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step]
+                        # p_t = p_t.cpu().detach().numpy().copy()
+                        p_t += 0.5 * u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step].cpu().detach().numpy().squeeze()
+                        # print(p_t, x_q_t)
 
+                        one_episode_latent_position.append(x_q_t)
+                        one_episode_position.append(p_t.copy())
+                        one_episode_raw_images.append(env.postprocess_observation(I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step].cpu().detach().numpy(), cfg["bit_depth"]))
+                        one_episode_rec_images.append(env.postprocess_observation(I_t.cpu().detach().numpy(), cfg["bit_depth"]))
 
-                        # latent_position = model.encoder.sample_mean({
-                        #     "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                        #     "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[0]})
-                        # latent_position = model.encoder.sample_mean({
-                        #     "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
-                        #     "y_t": y})
+                    all_latent_position.append(one_episode_latent_position)
+                    all_position.append(one_episode_position)
+                    all_raw_images.append(one_episode_raw_images)
+                    all_rec_images.append(one_episode_rec_images)
 
-                        # all_latent_position.append(
-                        #     latent_position.to("cpu").detach().numpy()[0].tolist())
+                all_latent_position = np.array(all_latent_position).squeeze()
+                all_position = np.array(all_position).squeeze()
+                all_raw_images = np.array(all_raw_images).squeeze().transpose(0, 1, 3, 4, 2)
+                all_rec_images = np.array(all_rec_images).squeeze().transpose(0, 1, 3, 4, 2)
 
-                        # observation_position = p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0]
-                        # all_observation_position.append(observation_position.to("cpu").detach().numpy()[0].tolist())
+                _all_latent_position = all_latent_position.copy()
+                _all_position = all_position.copy()
 
-                        # visualizer.append(
-                        #     env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
-                        #         "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
-                        #     env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
-                        #         0].transpose(1, 2, 0), cfg["bit_depth"]),
-                        #     np.array(all_latent_position)
-                        # )
+                mean_corr_x = 0.
+                mean_corr_y = 0.
+                mean_corr_r = 0.
 
-                    # np.savez(f"{save_correlation_path}/{epoch}.{idx}", {'latent': all_latent_position, 'observation': all_observation_position})
+                for idx in range(0, _all_latent_position.shape[0]):
+                    mean_corr_x += np.corrcoef(_all_latent_position[idx, 0], _all_position[idx, 0])[0, 1]
+                    mean_corr_y += np.corrcoef(_all_latent_position[idx, 1], _all_position[idx, 1])[0, 1]
+                    mean_corr_r += np.corrcoef(_all_latent_position[idx, 2], _all_position[idx, 2])[0, 1]
 
+                mean_corr_x /= _all_latent_position.shape[0]
+                mean_corr_y /= _all_latent_position.shape[0]
+                mean_corr_r /= _all_latent_position.shape[0]
 
-                # visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
-                # visualizer.add_images(writer, epoch)
-                # print()
+                visualizer.append(
+                        all_raw_images,
+                        all_rec_images,
+                        all_latent_position,
+                        all_position,
+                )
+                visualizer.encode(save_video_path, f"{epoch}.{idx}.mp4")
 
-                # correlation_X = np.corrcoef(
-                #     np.array(all_observation_position)[:, 0], np.array(all_latent_position)[:, 0])
-                # correlation_Y = np.corrcoef(
-                #     np.array(all_observation_position)[:, 1], np.array(all_latent_position)[:, 1])
-                # correlation_R = np.corrcoef(
-                #     np.array(all_observation_position)[:, 2], np.array(all_latent_position)[:, 2])
-                # print("X", correlation_X[0, 1], "Y", correlation_Y[0, 1], "R", correlation_R[0, 1])
-
-                # writer.add_scalar('correlation/X', correlation_X[0, 1], epoch - 1)
-                # writer.add_scalar('correlation/Y', correlation_Y[0, 1], epoch - 1)
-                # writer.add_scalar('correlation/R', correlation_R[0, 1], epoch - 1)
+            print()
+            pbar.set_postfix({
+                "correlation x": f"{mean_corr_x:.3f}",
+                "correlation y": f"{mean_corr_y:.3f}",
+                "correlation r": f"{mean_corr_r:.3f}",
+            })
 
 
 if __name__ == "__main__":
