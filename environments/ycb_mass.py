@@ -108,12 +108,12 @@ class PointMass(base.Task):
     physics.named.data.qpos["root_y"] = 0.00
     physics.named.data.qpos["shoulder"] = 0.00
 
-    # physics.named.data.qpos["object_x"] = 0.00
-    # physics.named.data.qpos["object_y"] = 0.00
-    # physics.named.data.qpos["object_shoulder"] = 0.00
-    physics.named.data.qpos["object_x"] = camera_x
-    physics.named.data.qpos["object_y"] = camera_y
-    physics.named.data.qpos["object_shoulder"] = camera_shoulder
+    physics.named.data.qpos["object_x"] = 0.00
+    physics.named.data.qpos["object_y"] = 0.00
+    physics.named.data.qpos["object_shoulder"] = 0.00
+    # physics.named.data.qpos["object_x"] = camera_x
+    # physics.named.data.qpos["object_y"] = camera_y
+    # physics.named.data.qpos["object_shoulder"] = camera_shoulder
 
     super().initialize_episode(physics)
 

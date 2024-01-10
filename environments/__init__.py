@@ -50,7 +50,7 @@ from environments import reacher_nvae
 from environments import point_mass_nvae
 from environments import ycb_mass
 
-from utils.env import preprocess_observation_, postprocess_observation, _images_to_observation
+from util.env import preprocess_observation_, postprocess_observation, _images_to_observation
 
 import torch
 
@@ -211,16 +211,16 @@ class ControlSuiteEnv():
   def get_model_and_assets(self):
     """Returns a tuple containing the model XML string and a dict of assets."""
     object_files = {
-            0: "mustard_bottle.xml",
-            1: "tomato_soup_can.xml",
-            # 2: "cracker_box.xml",
-            # 3: "master_chef_can.xml",
-            # 4: "gelatin_box.xml",
-            # 5: "pudding_box.xml",
-            # 6: "sugar_box.xml",
-            # 7: "tuna_fish_can.xml",
-            # 8: "potted_meat_can.xml",
-            # 9: "power_drill.xml",
+            # 0: "mustard_bottle.xml",
+            # 1: "tomato_soup_can.xml",
+            # 0: "cracker_box.xml",
+            # 1: "master_chef_can.xml",
+            # 0: "gelatin_box.xml",
+            # 1: "pudding_box.xml",
+            # 0: "sugar_box.xml",
+            # 1: "tuna_fish_can.xml",
+            0: "potted_meat_can.xml",
+            1: "power_drill.xml",
     }
     object_file_number = random.choice(list(object_files.keys()))
     object_file = object_files[object_file_number]

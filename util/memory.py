@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 
-from utils.env import postprocess_observation, _images_to_observation
+from util.env import postprocess_observation, _images_to_observation
 
 
 class ExperienceReplay():

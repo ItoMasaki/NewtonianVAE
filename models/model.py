@@ -90,7 +90,7 @@ class ConditionalNewtonianVAE(Model):
 
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
         # x_q_tn1 = self.encoder.sample({"I_t": I[0], "y_t": y[0]}, reparam=True)["x_t"]
-        x_q_tn1 = torch.zeros(B, C).to(self.device)
+        x_q_tn1 = torch.zeros(B, C).to(self.device).detach()
 
         for step in range(1, T-1):
 

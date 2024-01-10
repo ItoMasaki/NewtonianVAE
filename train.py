@@ -13,7 +13,7 @@ import shutil
 import yaml
 
 from models import ConditionalNewtonianVAE
-from utils import visualize, memory, env
+from util import visualize, memory, env
 
 
 def data_loop(epoch, loader, model, device, beta, train_mode=False):
