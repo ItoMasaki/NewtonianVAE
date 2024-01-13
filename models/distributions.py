@@ -14,10 +14,10 @@ class Encoder(dist.Normal):
         q(x_t | I_t, y_t) = Normal(x_t | I_t, y_t)
     """
 
-    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
+    def __init__(self, input_dim: int, label_dim: int, output_dim: int, act_func_name: str):
         super().__init__(var=["x_t"], cond_var=["I_t", "y_t"], name="q")
 
-        activation_func = getattr(nn, activate_func)
+        activation_func = getattr(nn, act_func_name)
 
         self.encoder = nn.Sequential(
             nn.Conv2d(3, 32, 4, stride=2),
@@ -49,18 +49,17 @@ class Encoder(dist.Normal):
         loc = self.loc(h)
         scale = self.scale(h)
 
-        return {"loc": loc, "scale": scale}
-
+        return {"loc": loc, "scale": scale + epsilon()}
 
 class Decoder(dist.Normal):
     """
         p(I_t | x_t, y_t) = Bernoulli(I_t | x_t, y_t)
     """
 
-    def __init__(self, input_dim: int, label_dim: int, output_dim: int, activate_func: str):
+    def __init__(self, input_dim: int, label_dim: int, output_dim: int, act_func_name: str):
         super().__init__(var=["I_t"], cond_var=["x_t", "y_t"])
 
-        activation_func = getattr(nn, activate_func)
+        activation_func = getattr(nn, act_func_name)
 
         self.loc = nn.Sequential(
             nn.Conv2d(input_dim+label_dim+2, 64, 3, stride=1, padding=1),
@@ -122,7 +121,7 @@ class Transition(dist.Normal):
 
         x_t = x_tn1 + self.delta_time * v_t
 
-        return {"loc": x_t, "scale": self.acivation_func(self.sigma) + 0.00000000000001}
+        return {"loc": x_t, "scale": self.acivation_func(self.sigma) + epsilon()}
 
 # class Transition(dist.Normal):
 #     """

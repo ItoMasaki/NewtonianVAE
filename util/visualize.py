@@ -76,6 +76,7 @@ class Visualization:
         ani.save(f"{save_path}/{file_name}", writer="ffmpeg")
         plt.cla()
         self.frames = []
+        plt.close()
 
     def add_images(self, writer, epoch):
         writer.add_images("reconstruction_images", np.stack(self.reconstruction_images), epoch, dataformats="NHWC")
