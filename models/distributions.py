@@ -14,10 +14,10 @@ class Encoder(dist.Normal):
         q(x_t | I_t, y_t) = Normal(x_t | I_t, y_t)
     """
 
-    def __init__(self, input_dim: int, output_dim: int, activate_func: str):
+    def __init__(self, input_dim: int, output_dim: int, act_func_name: str):
         super().__init__(var=["x_t"], cond_var=["I_t"], name="q")
 
-        activation_func = getattr(nn, activate_func)
+        activation_func = getattr(nn, act_func_name)
 
         self.encoder = nn.Sequential(
             nn.Conv2d(3, 32, 4, stride=2),
@@ -55,10 +55,10 @@ class Decoder(dist.Normal):
         p(I_t | x_t, y_t) = Bernoulli(I_t | x_t, y_t)
     """
 
-    def __init__(self, input_dim: int, output_dim: int, activate_func: str):
+    def __init__(self, input_dim: int, output_dim: int, act_func_name: str, device: str):
         super().__init__(var=["I_t"], cond_var=["x_t"])
 
-        activation_func = getattr(nn, activate_func)
+        activation_func = getattr(nn, act_func_name)
 
         self.loc = nn.Sequential(
             nn.Conv2d(input_dim+2, 64, 3, stride=1, padding=1),
