@@ -47,7 +47,7 @@ class Encoder(dist.Normal):
         loc = self.loc(h)
         scale = self.scale(h)
 
-        return {"loc": loc, "scale": scale}
+        return {"loc": loc, "scale": scale + epsilon()}
 
 
 class Decoder(dist.Normal):

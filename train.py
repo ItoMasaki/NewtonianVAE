@@ -138,7 +138,7 @@ def main():
 
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
-                        I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
+                        x_q_t, x_p_tp1 = model.estimate(
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step+1],
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
@@ -152,11 +152,13 @@ def main():
                         observation_position = p.permute(1, 0, 2)[step+1] - p.permute(1, 0, 2)[0]
                         all_observation_position.append(observation_position.to("cpu").detach().numpy()[0].tolist())
 
+
                         visualizer.append(
                             env.postprocess_observation(I.permute(1, 0, 4, 2, 3)[step].to(
                                 "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
-                            env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
-                                0].transpose(1, 2, 0), cfg["bit_depth"]),
+                            np.zeros((64, 64, 3)),
+                            # env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
+                            #     0].transpose(1, 2, 0), cfg["bit_depth"]),
                             np.array(all_latent_position)
                         )
 
