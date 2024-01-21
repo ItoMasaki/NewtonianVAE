@@ -22,7 +22,7 @@ class ExperienceReplay():
         self.positions = np.empty(
             (episode_size, sequence_size, action_size), dtype=np.float32)
         self.labels = np.empty(
-            (episode_size, sequence_size, 1), dtype=np.float32)
+            (episode_size, sequence_size, 10), dtype=np.float32)
 
     def __len__(self):
         return len(self.actions)
@@ -49,7 +49,7 @@ class ExperienceReplay():
         self.positions = np.empty(
             (episode_size, sequence_size, action_size), dtype=np.float32)
         self.labels = np.empty(
-            (episode_size, sequence_size, 1), dtype=np.float32)
+            (episode_size, sequence_size, 10), dtype=np.float32)
 
     def save(self, path, filename):
         try:
@@ -62,16 +62,16 @@ class ExperienceReplay():
 
     def load(self, path, filename):
         with np.load(f"{path}/{filename}", allow_pickle=True) as data:
-            # self.colors = data["colors"][0:self.episode_size]
-            # self.actions = data["actions"][0:self.episode_size]
-            # self.positions = data["positions"][0:self.episode_size]
-            # self.labels = data["labels"][0:self.episode_size]
+            self.colors = data["colors"][0:self.episode_size]
+            self.actions = data["actions"][0:self.episode_size]
+            self.positions = data["positions"][0:self.episode_size]
+            self.labels = data["labels"][0:self.episode_size]
 
             # 'action', 'image', 'depth', 'joint', 'label'
-            self.colors = data["image"][0:self.episode_size]
-            self.actions = data["action"][0:self.episode_size]
-            self.positions = data["joint"][0:self.episode_size]
-            self.labels = data["label"][0:self.episode_size]
+            # self.colors = data["image"][0:self.episode_size]
+            # self.actions = data["action"][0:self.episode_size]
+            # self.positions = data["joint"][0:self.episode_size]
+            # self.labels = data["label"][0:self.episode_size]
 
 def make_loader(cfg, mode):
     #==========================#

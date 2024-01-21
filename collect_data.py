@@ -7,8 +7,8 @@ import torch
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from utils import memory, visualize
-from utils.env import postprocess_observation
+from util import memory, visualize
+from util.env import postprocess_observation
 from environments import load, ControlSuiteEnv
 
 
@@ -43,7 +43,7 @@ def main():
         for episode in tqdm(range(episode_size)):
             time_step = env.reset()
 
-            labels = np.array([time_step[2]]*sequence_size).reshape(-1, 1)
+            labels = np.array([np.eye(10)[time_step[2]]]*sequence_size).reshape(-1, 10)
             images = []
             actions = []
             positions = []

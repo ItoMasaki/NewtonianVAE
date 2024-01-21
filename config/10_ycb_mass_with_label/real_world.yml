@@ -1,0 +1,118 @@
+batch_size: &batch_size 1
+epoch_size: 50000 
+check_epoch: 1
+bit_depth: &bit_depth 8
+device: &device cpu
+path: &path datasets/10_ycb_mass_with_label
+
+
+weight:
+  path: results/2022_12_18_22_11_30/weights
+  filename: 300.weight
+
+
+environment:
+  domain_name: ycb_mass
+  task_name: easy
+  max_episode_length: 1000
+  bit_depth: 8
+
+
+model:
+  delta_time: &delta_time 0.5
+  clip_grad_norm: False
+  clip_grad_value: False
+  device: *device
+  use_amp: False
+
+  encoder_param:
+    input_dim: 3
+    output_dim: 2
+    act_func_name: ReLU
+
+  decoder_param:
+    input_dim: 2
+    output_dim: 3
+    act_func_name: LeakyReLU
+    device: *device
+
+  transition_param:
+    delta_time: *delta_time
+
+  velocity_param:
+    batch_size: *batch_size
+    act_func_name: ReLU
+    delta_time: *delta_time
+    device: *device
+    use_data_efficiency: True
+
+  optimizer: Adam
+  optimizer_params:
+    lr: 0.0003
+
+
+dataset:
+  train:
+    episode_size: &train_episode_size 1000
+    sequence_size: &trin_sequence_size 100
+
+    data:
+      path: *path
+      filename: train.npz
+
+    memory:
+      episode_size: *train_episode_size
+      sequence_size: *trin_sequence_size
+      action_size: 2
+      bit_depth: *bit_depth
+      device: *device
+
+    loader:
+      batch_size: 1
+      shuffle: True
+      drop_last: False
+      num_workers: 8
+      pin_memory: True
+
+  validation:
+    episode_size: &validation_episode_size 10
+    sequence_size: &validation_sequence_size 100
+
+    data:
+      path: *path
+      filename: validation.npz
+
+    memory:
+      episode_size: *validation_episode_size
+      sequence_size: *validation_sequence_size
+      action_size: 2
+      bit_depth: *bit_depth
+      device: *device
+
+    loader:
+      batch_size: 16
+      shuffle: False
+      drop_last: False
+      num_workers: 8
+      pin_memory: True
+
+  test:
+    episode_size: &test_episode_size 10
+    sequence_size: &test_sequence_size 100
+    data:
+      path: *path
+      filename: test.npz
+
+    memory:
+      episode_size: *test_episode_size
+      sequence_size: *test_sequence_size
+      action_size: 2
+      bit_depth: *bit_depth
+      device: *device
+
+    loader:
+      batch_size: 16
+      shuffle: False
+      drop_last: False
+      num_workers: 8
+      pin_memory: True

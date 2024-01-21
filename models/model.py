@@ -36,9 +36,9 @@ class ConditionalNewtonianVAE(Model):
         # Define models           #
         #-------------------------#
         self.encoder = Encoder(**encoder_param).to(device)
-        # self.decoder = Decoder(**decoder_param).to(device)
-        # self.transition = Transition(**transition_param).to(device)
-        # self.velocity = Velocity(**velocity_param).to(device)
+        self.decoder = Decoder(**decoder_param).to(device)
+        self.transition = Transition(**transition_param).to(device)
+        self.velocity = Velocity(**velocity_param).to(device)
 
         #-------------------------#
         # Define hyperparams      #
@@ -47,15 +47,12 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define loss functions   #
         #-------------------------#
-        # recon_loss = E(self.transition, LogProb(self.decoder))
-        # kl_loss = KL(self.encoder, self.transition)
-        # self.loss_cls = (kl_loss - recon_loss).mean()
-        self.loss_cls = LogProb(self.encoder).mean()
+        recon_loss = E(self.transition, LogProb(self.decoder))
+        kl_loss = KL(self.encoder, self.transition)
+        self.loss_cls = (kl_loss - recon_loss).mean()
 
-        # self.distributions = nn.ModuleList(
-        #     [self.encoder, self.decoder, self.transition, self.velocity])
         self.distributions = nn.ModuleList(
-            [self.encoder])
+            [self.encoder, self.decoder, self.transition, self.velocity])
 
         # -------------------------#
         # Set params and optim     #
@@ -157,20 +154,20 @@ class ConditionalNewtonianVAE(Model):
                 x_q_t = self.encoder.sample_mean({"I_t": I_t})
 
                 # p(I_t | x_t)
-                # I_t = self.decoder.sample_mean({"x_t": x_q_t})
+                I_t = self.decoder.sample_mean({"x_t": x_q_t})
 
                 # v_t = (x^q_t - x^q_{t-1})/dt
-                # v_t = (x_q_t - x_q_tn1)/self.delta_time
+                v_t = (x_q_t - x_q_tn1)/self.delta_time
 
                 # v_{t+1} = v_{t} + dt (A*x_{t} + B*v_{t} + C*u_{t})
-                # v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u_t)["v_t"]
+                v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u_t)["v_t"]
 
                 # p(x_p_{t+1} | x_q_{t}, v_{t+1})
-                # x_p_tp1 = self.transition.sample_mean(
-                #     {"x_tn1": x_q_t, "v_t": v_tp1})
+                x_p_tp1 = self.transition.sample_mean(
+                    {"x_tn1": x_q_t, "v_t": v_tp1})
 
                 # p(I_{t+1} | x_{t+1})
-                # I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1})
+                I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1})
 
         return x_q_t, x_q_tn1
 
