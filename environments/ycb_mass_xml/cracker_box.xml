@@ -24,7 +24,7 @@
       <camera name="cam0" pos="0 0 .3" quat="1 0 0 0"/>
       <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0"/>
       <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0"/>
-      <joint name="shoulder" limited="false"/>
+      <!--joint name="shoulder" limited="false"/-->
       <geom name="cam" pos="0 0 1.75" material="target" type="sphere" size=".015"/>
     </body>
 
@@ -34,6 +34,7 @@
       <joint name="object_y" pos="0 0 0" type="slide" axis='0 1 0'/>
       <joint name="object_shoulder" limited="false"/>
     </body>
+
   </worldbody>
 
   <tendon>
@@ -50,6 +51,6 @@
   <actuator>
     <motor name="t1" tendon="t1"/>
     <motor name="t2" tendon="t2"/>
-    <!--motor name="shoulder" joint="shoulder"/-->
   </actuator>
+
 </mujoco>

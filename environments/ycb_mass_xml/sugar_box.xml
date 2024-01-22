@@ -16,24 +16,25 @@
   <include file="environments/includes/assets_004_sugar_box.xml"/>
 
   <worldbody>
-    <!--geom name="ground" type="plane" pos="0 0 0" size="3. 3. .1" material="grid"/-->
-    <geom name="ground" type="plane" size="2 2 0.1" pos="0 0 0" rgba="0.1 0.9 0.1 1"/>
-
-    <body name="camera" pos="0 0 .3">
-      <light name="light" pos="0 0 1"/>
-      <camera name="cam0" pos="0 0 .3" quat="1 0 0 0"/>
-      <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0"/>
-      <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0"/>
-      <joint name="shoulder" limited="false"/>
-      <geom name="cam" pos="0 0 1.75" material="target" type="sphere" size=".015"/>
+    <!--geom name="ground" type="plane" pos="0 0 0" size="3. 3. .1" material="grid"/-->    
+    <geom name="ground" type="plane" size="2 2 0.1" pos="0 0 0" rgba="0.1 0.9 0.1 1"/>    
+    
+    <body name="camera" pos="0 0 .3">    
+      <light name="light" pos="0 0 1"/>    
+      <camera name="cam0" pos="0 0 .3" quat="1 0 0 0"/>    
+      <joint name="root_x" type="slide"  pos="0 0 0" axis="1 0 0"/>    
+      <joint name="root_y" type="slide"  pos="0 0 0" axis="0 1 0"/>    
+      <!--joint name="shoulder" limited="false"/-->    
+      <geom name="cam" pos="0 0 1.75" material="target" type="sphere" size=".015"/>    
+    </body>    
+    
+    <body name="target_object" pos="0 0 0.1">    
+      <include file="environments/includes/body_004_sugar_box.xml"/>    
+      <joint name="object_x" pos="0 0 0" type="slide" axis='1 0 0'/>    
+      <joint name="object_y" pos="0 0 0" type="slide" axis='0 1 0'/>    
+      <joint name="object_shoulder" limited="false"/>    
     </body>
-
-    <body name="target_object" pos="0 0 0.1">
-      <include file="environments/includes/body_004_sugar_box.xml"/>
-      <joint name="object_x" pos="0 0 0" type="slide" axis='1 0 0'/>
-      <joint name="object_y" pos="0 0 0" type="slide" axis='0 1 0'/>
-      <joint name="object_shoulder" limited="false"/>
-    </body>
+	
   </worldbody>
 
   <tendon>

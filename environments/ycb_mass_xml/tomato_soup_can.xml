@@ -28,15 +28,16 @@
       <geom name="cam" pos="0 0 1.75" material="target" type="sphere" size=".015"/>
     </body>
 
-    <body name="target_object" pos="0 0 0.1">
-      <include file="environments/includes/body_005_tomato_soup_can.xml"/>
-      <joint name="object_x" pos="0 0 0" type="slide" axis='1 0 0'/>
-      <joint name="object_y" pos="0 0 0" type="slide" axis='0 1 0'/>
+    <body name="target_object" pos="0 0 0">
+      <joint name="object_x" pos="0 0 0" type="slide" axis='1 0 0'/>        
+      <joint name="object_y" pos="0 0 0" type="slide" axis='0 1 0'/>        
       <joint name="object_shoulder" limited="false"/>
+      <include file="environments/includes/body_005_tomato_soup_can.xml"/>
     </body>
+
   </worldbody>
 
-  <tendon>
+<tendon>
     <fixed name="t1">
       <joint joint="root_x" coef="1"/>
       <joint joint="root_y" coef="0"/>
@@ -50,6 +51,5 @@
   <actuator>
     <motor name="t1" tendon="t1"/>
     <motor name="t2" tendon="t2"/>
-    <!--motor name="shoulder" joint="shoulder"/-->
   </actuator>
 </mujoco>

@@ -52,6 +52,8 @@ from environments import ycb_mass
 
 from util.env import preprocess_observation_, postprocess_observation, _images_to_observation
 
+import torch
+
 # Find all domains imported.
 _DOMAINS = {name: module for name, module in locals().items()
             if inspect.ismodule(module) and hasattr(module, 'SUITE')}
@@ -170,7 +172,8 @@ class ControlSuiteEnv():
     return _images_to_observation(self._env.physics.render(64, 64, camera_id=0), self.bit_depth), state, number
 
   def step(self, action):
-    action = action.detach().numpy()
+    if isinstance(action, torch.Tensor):
+        action = action.detach().numpy()
     reward = 0
 
     state = self._env.step(action)
