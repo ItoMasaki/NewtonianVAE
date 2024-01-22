@@ -24,13 +24,13 @@ def data_loop(epoch, loader, model, device, beta, train_mode=False):
 
         if train_mode:
             mean_loss += model.train({
-                "I": I.to(device, non_blocking=True).permute(1, 0, 4, 2, 3),
+                "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2), 
                 "y": label.to(device, non_blocking=True).permute(1, 0, 2),
                 "beta": beta}) * batch_size
         else:
             mean_loss += model.test({
-                "I": I.to(device, non_blocking=True).permute(1, 0, 4, 2, 3),
+                "I": I.to(device, non_blocking=True).permute(1, 0, 2, 3, 4),
                 "u": u.to(device, non_blocking=True).permute(1, 0, 2),
                 "y": label.to(device, non_blocking=True).permute(1, 0, 2),
                 "beta": beta}) * batch_size
@@ -144,8 +144,8 @@ def main():
                     for step in range(0, cfg["dataset"]["train"]["sequence_size"]-1):
 
                         I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
-                            I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step+1],
-                            I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step],
+                            I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
+                            I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1],
                             label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
                         # I_t, I_tp1, x_q_t, x_p_tp1 = model.estimate(
@@ -156,7 +156,7 @@ def main():
 
 
                         latent_position = model.encoder.sample_mean({
-                            "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step+1],
+                            "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                             "y_t": label.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1]})
                         # latent_position = model.encoder.sample_mean({
                         #     "I_t": I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
@@ -169,7 +169,7 @@ def main():
                         all_observation_position.append(observation_position.to("cpu").detach().numpy()[0].tolist())
 
                         visualizer.append(
-                            env.postprocess_observation(I.permute(1, 0, 4, 2, 3)[step].to(
+                            env.postprocess_observation(I.permute(1, 0, 2, 3, 4)[step].to(
                                 "cpu", non_blocking=True).detach().numpy()[0].transpose(1, 2, 0), cfg["bit_depth"]),
                             env.postprocess_observation(I_t.to("cpu", non_blocking=True).detach().to(torch.float32).numpy()[
                                 0].transpose(1, 2, 0), cfg["bit_depth"]),

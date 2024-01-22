@@ -62,16 +62,16 @@ class ExperienceReplay():
 
     def load(self, path, filename):
         with np.load(f"{path}/{filename}", allow_pickle=True) as data:
-            # self.colors = data["color"][0:self.episode_size]
-            # self.actions = data["action"][0:self.episode_size]
-            # self.positions = data["position"][0:self.episode_size]
-            # self.labels = data["label"][0:self.episode_size]
+            self.colors = data["colors"][0:self.episode_size]
+            self.actions = data["actions"][0:self.episode_size]
+            self.positions = data["positions"][0:self.episode_size]
+            self.labels = data["labels"][0:self.episode_size]
 
             # REAL WORLD'action', 'image', 'depth', 'joint', 'label'
-            self.colors = data["image"][0:self.episode_size]
-            self.actions = data["action"][0:self.episode_size]
-            self.positions = data["joint"][0:self.episode_size]
-            self.labels = data["label"][0:self.episode_size]
+            # self.colors = data["image"][0:self.episode_size]
+            # self.actions = data["action"][0:self.episode_size]
+            # self.positions = data["joint"][0:self.episode_size]
+            # self.labels = data["label"][0:self.episode_size]
         
 
 def make_loader(cfg, mode):
