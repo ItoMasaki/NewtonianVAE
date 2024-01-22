@@ -43,30 +43,36 @@ def main():
         for episode in tqdm(range(episode_size)):
             time_step = env.reset()
 
-            labels = np.array([np.eye(10)[time_step[2]]]*sequence_size).reshape(-1, 10)
-            images = []
-            actions = []
-            positions = []
-            action = 0.
+            image = time_step[0]
+            image = image.numpy()
+            image = postprocess_observation(image, 8)
+            plt.imshow(image)
+            plt.show()
 
-            for _ in range(sequence_size):
-                action += np.random.uniform(-0.01, 0.01, 2)
-                action = np.clip(action, -1, 1)
+        #     labels = np.array([np.eye(10)[time_step[2]]]*sequence_size).reshape(-1, 10)
+        #     images = []
+        #     actions = []
+        #     positions = []
+        #     action = 0.
 
-                observation, state, reward, done = env.step(torch.from_numpy(action))
-                # env.render()
+        #     for _ in range(sequence_size):
+        #         action += np.random.uniform(-0.01, 0.01, 2)
+        #         action = np.clip(action, -1, 1)
 
-                images.append(observation.permute(2, 0, 1)[
-                    np.newaxis, :, :, :])
-                actions.append(action[np.newaxis, :])
+        #         observation, state, reward, done = env.step(torch.from_numpy(action))
+        #         # env.render()
 
-                positions.append(state.observation["position"][np.newaxis, :])
+        #         images.append(observation.permute(2, 0, 1)[
+        #             np.newaxis, :, :, :])
+        #         actions.append(action[np.newaxis, :])
 
-            save_memory.append(np.concatenate(images),
-                               np.concatenate(actions), np.concatenate(positions), labels, episode)
+        #         positions.append(state.observation["position"][np.newaxis, :])
 
-        print()
-        save_memory.save(save_path, save_filename)
+        #     save_memory.append(np.concatenate(images),
+        #                        np.concatenate(actions), np.concatenate(positions), labels, episode)
+
+        # print()
+        # save_memory.save(save_path, save_filename)
 
 
 if __name__ == "__main__":

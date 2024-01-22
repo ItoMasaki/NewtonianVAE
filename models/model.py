@@ -35,6 +35,7 @@ class ConditionalNewtonianVAE(Model):
         #-------------------------#
         # Define models           #
         #-------------------------#
+        print(device)
         self.encoder = Encoder(**encoder_param).to(device)
         self.decoder = Decoder(**decoder_param).to(device)
         self.transition = Transition(**transition_param).to(device)
@@ -82,27 +83,26 @@ class ConditionalNewtonianVAE(Model):
         T, B, C = u.shape
 
         # x^q_{t-1} ~ p(x^q_{t-1} | I_{t-1})
-        v_p_t = torch.zeros(B, C).to(self.device)
-        x_p_t = torch.zeros(B, C).to(self.device)
-
-        v_p_tn1 = torch.zeros(B, C).to(self.device)
-        x_p_tn1 = torch.zeros(B, C).to(self.device)
+        x_q_tn1 = torch.zeros(B, C).to(self.device)
 
         for step in range(1, T-1):
 
-            x_q_tn1 = self.encoder.sample_mean({"I_t": I[step-1]})
+            # x^q_{t} ~ p(x^q_{t} | I_{t})
+            x_q_t = self.encoder.sample({"I_t": I[step]}, reparam=True)["x_t"]
 
-            self.optimizer.zero_grad(set_to_none=True)
+            # v_t = (x^q_{t} - x^q_{t-1})/dt
+            v_t = (x_q_t - x_q_tn1)/self.delta_time
 
-            step_loss = nn.MSELoss()(x_q_tn1, x_p_tn1)
+            # v_{t+1} = v_{t} + dt (A*x_{t} + B*v_{t} + C*u_{t})
+            v_tp1 = self.velocity(x_tn1=x_q_t, v_tn1=v_t, u_tn1=u[step])["v_t"]
+
+            # KL[p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1}) || q(x^q_{t+1} | I_{t+1})] - E_p(x^p_{t+1} | x^q_{t}, u_{t}; v_{t+1})[log p(I_{t+1} | x^p_{t+1})]
+            step_loss, variables = self.loss_cls({'x_tn1': x_q_t, 'v_t': v_tp1, 'I_t': I[step+1]})
 
             total_loss += step_loss
 
-            v_p_tn1 = v_p_tn1 + self.delta_time * u[step]
-            x_p_tn1 = x_p_tn1 + self.delta_time * v_p_tn1
+            x_q_tn1 = x_q_t
 
-            v_p_t = v_p_tn1.detach()
-            x_p_t = x_p_tn1.detach()
 
         return total_loss/T
 
@@ -169,7 +169,7 @@ class ConditionalNewtonianVAE(Model):
                 # p(I_{t+1} | x_{t+1})
                 I_tp1 = self.decoder.sample_mean({"x_t": x_p_tp1})
 
-        return x_q_t, x_q_tn1
+        return x_q_t, x_q_tn1, I_tp1
 
     def save(self, path, filename):
         os.makedirs(path, exist_ok=True)

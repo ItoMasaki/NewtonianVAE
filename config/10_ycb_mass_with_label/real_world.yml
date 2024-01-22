@@ -1,8 +1,8 @@
 batch_size: &batch_size 1
-epoch_size: 50000 
+epoch_size: 300
 check_epoch: 1
 bit_depth: &bit_depth 8
-device: &device cpu
+device: &device cuda
 path: &path datasets/10_ycb_mass_with_label
 
 
@@ -80,7 +80,7 @@ dataset:
 
     data:
       path: *path
-      filename: validation.npz
+      filename: train.npz
 
     memory:
       episode_size: *validation_episode_size
@@ -90,7 +90,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: 16
+      batch_size: 1
       shuffle: False
       drop_last: False
       num_workers: 8
@@ -101,7 +101,7 @@ dataset:
     sequence_size: &test_sequence_size 100
     data:
       path: *path
-      filename: test.npz
+      filename: train.npz
 
     memory:
       episode_size: *test_episode_size
@@ -111,7 +111,7 @@ dataset:
       device: *device
 
     loader:
-      batch_size: 16
+      batch_size: 1
       shuffle: False
       drop_last: False
       num_workers: 8

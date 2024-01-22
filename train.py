@@ -150,7 +150,7 @@ def main():
                         #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step+1],
                         #     I.to(cfg["device"], non_blocking=True).permute(1, 0, 4, 2, 3)[step],
                         #     u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
-                        x_q_t, x_p_tp1 = model.estimate(
+                        x_q_t, x_p_tp1, I_t = model.estimate(
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step+1],
                             I.to(cfg["device"], non_blocking=True).permute(1, 0, 2, 3, 4)[step],
                             u.to(cfg["device"], non_blocking=True).permute(1, 0, 2)[step+1])
