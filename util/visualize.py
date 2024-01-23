@@ -45,6 +45,8 @@ class Visualization:
         self.frames: list = []
         self.reconstruction_images = []
 
+        self.colors = []
+
     def append(self, I_t, rec_I_t, points=None):
 
         self.ax1.set_title(r"$ I_t $")
@@ -56,9 +58,11 @@ class Visualization:
 
         art_1 = self.ax1.imshow(I_t)
         art_2 = self.ax2.imshow(rec_I_t)
+       
+        self.colors.append(((len(points)-1)%100)/100)
         if points is not None:
             art_4 = self.ax4.scatter(
-                points[:, 0], points[:, 1], s=1., c=cmap(np.arange(0, len(points))/100))
+                points[:, 0], points[:, 1], s=1., c=cmap(self.colors))
 
             self.frames.append([art_1, art_2, art_4])
         else:
@@ -76,6 +80,8 @@ class Visualization:
         ani.save(f"{save_path}/{file_name}", writer="ffmpeg")
         plt.cla()
         self.frames = []
+        self.colors = []
+        plt.close()
 
     def add_images(self, writer, epoch):
         writer.add_images("reconstruction_images", np.stack(self.reconstruction_images), epoch, dataformats="NHWC")

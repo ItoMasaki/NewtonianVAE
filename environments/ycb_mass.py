@@ -97,7 +97,7 @@ class PointMass(base.Task):
     Args:
       physics: An instance of `mujoco.Physics`.
     """
-    _range = 0.25
+    _range = 0.2
     # _rot_range = 1.57
     _rot_range = 1.57 * 2.
 
@@ -105,9 +105,12 @@ class PointMass(base.Task):
     camera_y = np.random.uniform(-_range, _range)
     # camera_shoulder = np.random.uniform(-_rot_range, _rot_range)
 
-    physics.named.data.qpos["root_x"] = 0.00
-    physics.named.data.qpos["root_y"] = 0.00
+    # physics.named.data.qpos["root_x"] = 0.00
+    # physics.named.data.qpos["root_y"] = 0.00
     # physics.named.data.qpos["shoulder"] = 0.00
+
+    physics.named.data.qpos["root_x"] = camera_x
+    physics.named.data.qpos["root_y"] = camera_y
 
     # physics.named.data.qpos["object_x"] = 0.00
     # physics.named.data.qpos["object_y"] = 0.00
