@@ -38,8 +38,9 @@ def main():
     success_errors = []
     failure_errors = []
 
-    for episode in tqdm(range(0, 50)):
-        fig, ((axis1, axis2), (axis3, axis4)) = plt.subplots(2, 2, tight_layout=True)
+    for episode in tqdm(range(0, 1)):
+        # fig, ((axis1, axis2), (axis3, axis4)) = plt.subplots(2, 2, tight_layout=True)
+        fig, (axis1) = plt.subplots(1, 1, tight_layout=True)
 
         frames = []
         #==================#
@@ -63,12 +64,12 @@ def main():
 
         action = torch.zeros(1, 2)
 
-        axis1.cla()
-        axis2.cla()
-        axis3.cla()
-        axis4.cla()
+        # axis1.cla()
+        # axis2.cla()
+        # axis3.cla()
+        # axis4.cla()
 
-        for _ in range(400):
+        for steps in range(400):
 
             #===================#
             # Get current image #
@@ -91,9 +92,12 @@ def main():
             # action[0, 1] = -action[0, 1]
             # action[0, 0] = -action[0, 0]
 
+            # axis1.set_axis_off()
             # art1 = axis1.imshow(env.postprocess_observation(target_observation.detach().numpy(), 8))
 
             # art2 = axis2.imshow(env.postprocess_observation(observation.detach().numpy().copy(), 8))
+            axis1.set_axis_off()
+            art1 = axis1.imshow(env.postprocess_observation(observation.detach().numpy().copy(), 8))
 
             # axis3.set_ylim(-0.5, 0.5)
             # bar1, bar2 = axis3.bar(["X", "Y"], action[0].cpu().detach().numpy(), color=["black", "black"])
@@ -101,6 +105,9 @@ def main():
             # art4 = axis4.imshow(env.postprocess_observation(reconstructed_image[0].permute(1, 2, 0).cpu().detach().numpy(), 8))
 
             # frames.append([art1, art2, bar1, bar2, art4])
+
+            if steps % 10 == 0:
+              fig.savefig(f"{save_root_path}/output.obj_num_{number}.episode_{steps}.png")
 
 
         error = np.sqrt(np.sum(state.observation["position"]**2))
