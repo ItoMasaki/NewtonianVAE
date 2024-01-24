@@ -7,7 +7,7 @@ path: &path datasets/10_ycb_mass_with_label
 
 
 weight:
-  path: results/2023_09_07_20_51_40/weights
+  path: results/10_ycb_conditional_newtonian_vae/weights
   filename: 200.weight
 
 
